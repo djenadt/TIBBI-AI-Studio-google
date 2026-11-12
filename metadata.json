@@ -1,0 +1,8 @@
+{
+  "name": "Remix TIBBI - الملف الصحي الرقمي للعائلة",
+  "description": "المنظومة الصحية الرقمية المتكاملة لحفظ ومتابعة التاريخ الطبي للأفراد والعائلات الجزائرية، إدارة الأدوية والتحاليل والمواعيد وصحة المرأة والطفل.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
