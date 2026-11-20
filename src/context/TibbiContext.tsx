@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import {
   Language,
+  tr,
   FamilyMember,
   Medication,
   LabTest,
@@ -35,6 +36,12 @@ import {
   INITIAL_NOTIFICATIONS,
 } from '../data/initialData';
 import { calculateBMI } from '../utils/healthCalculators';
+import {
+  ALL_LIGHT_BG_CLASSES,
+  LightBgThemeId,
+  resolveLightBgPreset,
+} from '../utils/appearanceSettings';
+import { localizeText } from '../utils/frTranslator';
 
 export type NavigationTab =
   | 'dashboard'
@@ -48,6 +55,7 @@ export type NavigationTab =
   | 'women_health'
   | 'child_health'
   | 'reports_share'
+  | 'settings'
   | 'search';
 
 interface TibbiContextType {
@@ -56,6 +64,8 @@ interface TibbiContextType {
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
+  lightBgTheme: LightBgThemeId;
+  setLightBgTheme: (id: LightBgThemeId) => void;
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
   goBack: () => void;
@@ -182,6 +192,10 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     return loadFromStorage<'light' | 'dark'>('theme', 'light');
+  });
+
+  const [lightBgTheme, setLightBgThemeState] = useState<LightBgThemeId>(() => {
+    return resolveLightBgPreset(loadFromStorage<string>('light_bg_theme', 'default')).id;
   });
 
   const [activeTab, setActiveTabState] = useState<NavigationTab>('dashboard');
@@ -337,12 +351,21 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     ]);
   });
 
+  const getDocumentTitle = (lang: Language) =>
+    tr(
+      lang,
+      'TIBBI - الملف الصحي الرقمي للعائلة | صحتك وصحة عائلتك في مكان واحد',
+      'TIBBI - Dossier Médical Familial Numérique | Santé en un seul endroit',
+      'TIBBI - Digital Family Health Record | All your family health in one place'
+    );
+
   // Sync language with HTML dir and lang attributes
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     saveToStorage('language', lang);
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.title = getDocumentTitle(lang);
   };
 
   const setTheme = (newTheme: 'light' | 'dark') => {
@@ -359,18 +382,29 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
+  const setLightBgTheme = (id: LightBgThemeId) => {
+    const resolved = resolveLightBgPreset(id).id;
+    setLightBgThemeState(resolved);
+    saveToStorage('light_bg_theme', resolved);
+  };
+
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.title = getDocumentTitle(language);
   }, [language]);
 
   useEffect(() => {
+    const preset = resolveLightBgPreset(lightBgTheme);
+    document.documentElement.dataset.lightBg = preset.id;
+    document.body.classList.remove(...ALL_LIGHT_BG_CLASSES);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.add(preset.appBgClass);
     }
-  }, [theme]);
+  }, [theme, lightBgTheme]);
 
   // Sync to localStorage
   useEffect(() => saveToStorage('family_members', familyMembers), [familyMembers]);
@@ -441,16 +475,34 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (id !== activeMemberId) {
       const target = familyMembers.find((m) => m.id === id);
       if (target) {
+        const isAr = language === 'ar';
         addAccessLog({
           action: 'view_profile',
           actionLabelAr: `فتح ومعاينة ملف ${target.relationship === 'child' ? 'الطفل القاصر (وصاية)' : 'فرد الأسرة'}`,
           actionLabelFr: `Consultation du dossier (${target.fullNameFr})`,
-          actorName: 'أمين مزيان (الولي وصاحب الحساب)',
-          targetMemberName: target.fullNameAr,
-          details: target.relationship === 'child'
-            ? `الوصول تحت وصاية الولي القانوني (${target.legalGuardian || 'أمين مزيان'})`
-            : 'استعراض البيانات الصحية والمؤشرات الحيوية',
-          ipOrDevice: 'تطبيق TIBBI المحلي',
+          actionLabelEn: `Viewed health record (${target.fullNameFr})`,
+          actorName: tr(
+            language,
+            'أمين مزيان (الولي وصاحب الحساب)',
+            'Amine Meziane (Tuteur et titulaire du compte)',
+            'Amine Meziane (Guardian & Account Holder)'
+          ),
+          targetMemberName: isAr ? target.fullNameAr : target.fullNameFr,
+          details:
+            target.relationship === 'child'
+              ? tr(
+                  language,
+                  `الوصول تحت وصاية الولي القانوني (${target.legalGuardian || 'أمين مزيان'})`,
+                  `Accès sous tutelle parentale légale (${localizeText(target.legalGuardian || 'Amine Meziane', 'fr')})`,
+                  `Accessed under legal guardianship (${localizeText(target.legalGuardian || 'Amine Meziane', 'en')})`
+                )
+              : tr(
+                  language,
+                  'استعراض البيانات الصحية والمؤشرات الحيوية',
+                  'Consultation des données de santé et constantes vitales',
+                  'Viewed health records and vital signs'
+                ),
+          ipOrDevice: tr(language, 'تطبيق TIBBI المحلي', 'Application TIBBI locale', 'Local TIBBI App'),
         });
       }
     }
@@ -462,14 +514,39 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const willBeUnmasked = !prev[memberId];
       const target = familyMembers.find((m) => m.id === memberId);
       if (willBeUnmasked) {
+        const isAr = language === 'ar';
         addAccessLog({
           action: 'unmask_id',
           actionLabelAr: 'إظهار رقم بطاقة الشفاء / المعرّف الشخصي',
           actionLabelFr: 'Démasquage du numéro Chifa / Identifiant',
-          actorName: activeMember ? activeMember.fullNameAr : 'أمين مزيان (رب الأسرة)',
-          targetMemberName: target ? target.fullNameAr : 'فرد الأسرة',
-          details: 'تم النقر على زر إظهار المعرف المحمي بعد التحقق من الهوية',
-          ipOrDevice: 'تطبيق TIBBI المحلي (جلسة موثقة)',
+          actionLabelEn: 'Unmasked Chifa / National ID number',
+          actorName: activeMember
+            ? isAr
+              ? activeMember.fullNameAr
+              : activeMember.fullNameFr
+            : tr(
+                language,
+                'أمين مزيان (رب الأسرة)',
+                'Amine Meziane (Chef de famille)',
+                'Amine Meziane (Head of Family)'
+              ),
+          targetMemberName: target
+            ? isAr
+              ? target.fullNameAr
+              : target.fullNameFr
+            : tr(language, 'فرد الأسرة', 'Membre de la famille', 'Family Member'),
+          details: tr(
+            language,
+            'تم النقر على زر إظهار المعرف المحمي بعد التحقق من الهوية',
+            'Démasquage de l’identifiant protégé après vérification',
+            'Revealed protected ID after verification'
+          ),
+          ipOrDevice: tr(
+            language,
+            'تطبيق TIBBI المحلي (جلسة موثقة)',
+            'Application TIBBI locale (session authentifiée)',
+            'Local TIBBI App (authenticated session)'
+          ),
         });
       }
       return { ...prev, [memberId]: willBeUnmasked };
@@ -517,11 +594,21 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addTimelineEvent({
       patientId: medData.patientId,
       date: medData.startDate,
-      title: `بدء علاج جديد: ${medData.name}`,
+      title: tr(
+        language,
+        `بدء علاج جديد: ${medData.name}`,
+        `Nouveau traitement initié : ${medData.name}`,
+        `New medication started: ${medData.name}`
+      ),
       category: 'prescription',
-      description: `الجرعة: ${medData.dosage} - الطبيب: ${medData.prescribingDoctor}`,
-      doctorOrFacility: medData.prescribingDoctor,
-      badge: 'دواء جديد',
+      description: tr(
+        language,
+        `الجرعة: ${medData.dosage} - الطبيب: ${medData.prescribingDoctor}`,
+        `Posologie : ${localizeText(medData.dosage, 'fr')} - Médecin : ${localizeText(medData.prescribingDoctor, 'fr')}`,
+        `Dosage: ${localizeText(medData.dosage, 'en')} - Doctor: ${localizeText(medData.prescribingDoctor, 'en')}`
+      ),
+      doctorOrFacility: localizeText(medData.prescribingDoctor, language),
+      badge: tr(language, 'دواء جديد', 'Nouveau traitement', 'New Medication'),
     });
 
     // Add to daily schedule if active
@@ -573,11 +660,21 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addTimelineEvent({
       patientId: testData.patientId,
       date: testData.date,
-      title: `تحليل مخبري: ${testData.testName}`,
+      title: tr(
+        language,
+        `تحليل مخبري: ${testData.testName}`,
+        `Analyse biologique : ${localizeText(testData.testName, 'fr')}`,
+        `Lab test: ${localizeText(testData.testName, 'en')}`
+      ),
       category: 'lab',
-      description: `النتيجة: ${testData.value} ${testData.unit} (${testData.isAbnormal ? 'خارج المجال الطبيعي' : 'طبيعي'})`,
-      doctorOrFacility: testData.laboratory,
-      badge: 'تحليل دم',
+      description: tr(
+        language,
+        `النتيجة: ${testData.value} ${testData.unit} (${testData.isAbnormal ? 'خارج المجال الطبيعي' : 'طبيعي'})`,
+        `Résultat : ${testData.value} ${testData.unit} (${testData.isAbnormal ? 'Hors norme' : 'Normal'})`,
+        `Result: ${testData.value} ${testData.unit} (${testData.isAbnormal ? 'Out of range' : 'Normal'})`
+      ),
+      doctorOrFacility: localizeText(testData.laboratory, language),
+      badge: tr(language, 'تحليل دم', 'Analyse sanguine', 'Blood Test'),
     });
   };
 
@@ -600,10 +697,20 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       addTimelineEvent({
         patientId: vitalData.patientId,
         date: vitalData.date,
-        title: `تسجيل قياس ضغط الدم: ${vitalData.systolicBp}/${vitalData.diastolicBp} مم زئبق`,
+        title: tr(
+          language,
+          `تسجيل قياس ضغط الدم: ${vitalData.systolicBp}/${vitalData.diastolicBp} مم زئبق`,
+          `Mesure tensionnelle enregistrée : ${vitalData.systolicBp}/${vitalData.diastolicBp} mmHg`,
+          `Blood pressure recorded: ${vitalData.systolicBp}/${vitalData.diastolicBp} mmHg`
+        ),
         category: 'vital',
-        description: `النبض: ${vitalData.heartRate || '--'} ن/د ${vitalData.notes ? '- ' + vitalData.notes : ''}`,
-        badge: 'مؤشر حيوي',
+        description: tr(
+          language,
+          `النبض: ${vitalData.heartRate || '--'} ن/د ${vitalData.notes ? '- ' + vitalData.notes : ''}`,
+          `Pouls : ${vitalData.heartRate || '--'} bpm ${vitalData.notes ? '- ' + localizeText(vitalData.notes, 'fr') : ''}`,
+          `Pulse: ${vitalData.heartRate || '--'} bpm ${vitalData.notes ? '- ' + localizeText(vitalData.notes, 'en') : ''}`
+        ),
+        badge: tr(language, 'مؤشر حيوي', 'Constante vitale', 'Vital Sign'),
       });
     }
   };
@@ -616,11 +723,28 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addTimelineEvent({
       patientId: docData.patientId,
       date: docData.date,
-      title: `إضافة وثيقة: ${docData.title}`,
+      title: tr(
+        language,
+        `إضافة وثيقة: ${docData.title}`,
+        `Document archivé : ${localizeText(docData.title, 'fr')}`,
+        `Document archived: ${localizeText(docData.title, 'en')}`
+      ),
       category: docData.type === 'prescription' ? 'prescription' : docData.type === 'lab_result' ? 'lab' : 'radiology',
-      description: docData.doctorName ? `بإشراف: ${docData.doctorName}` : `وثيقة مؤرشفة في ملف ${docData.patientId}`,
-      doctorOrFacility: docData.facility || docData.doctorName,
-      badge: 'أرشيف طبي',
+      description: docData.doctorName
+        ? tr(
+            language,
+            `بإشراف: ${docData.doctorName}`,
+            `Prescrit par : ${localizeText(docData.doctorName, 'fr')}`,
+            `Prescribed by: ${localizeText(docData.doctorName, 'en')}`
+          )
+        : tr(
+            language,
+            `وثيقة مؤرشفة في ملف ${docData.patientId}`,
+            `Document archivé dans le dossier ${docData.patientId}`,
+            `Document archived in record ${docData.patientId}`
+          ),
+      doctorOrFacility: localizeText(docData.facility || docData.doctorName, language),
+      badge: tr(language, 'أرشيف طبي', 'Archive médicale', 'Medical Archive'),
     });
   };
 
@@ -663,11 +787,21 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addTimelineEvent({
       patientId: aptData.patientId,
       date: aptData.date,
-      title: `موعد طبي: ${aptData.doctorName} (${aptData.specialty})`,
+      title: tr(
+        language,
+        `موعد طبي: ${aptData.doctorName} (${aptData.specialty})`,
+        `Rendez-vous médical : ${localizeText(aptData.doctorName, 'fr')} (${localizeText(aptData.specialty, 'fr')})`,
+        `Medical appointment: ${localizeText(aptData.doctorName, 'en')} (${localizeText(aptData.specialty, 'en')})`
+      ),
       category: 'consultation',
-      description: `السبب: ${aptData.reason} - المكان: ${aptData.clinicName}`,
-      doctorOrFacility: aptData.doctorName,
-      badge: 'موعد طبي',
+      description: tr(
+        language,
+        `السبب: ${aptData.reason} - المكان: ${aptData.clinicName}`,
+        `Motif : ${localizeText(aptData.reason, 'fr')} - Lieu : ${localizeText(aptData.clinicName, 'fr')}`,
+        `Reason: ${localizeText(aptData.reason, 'en')} - Location: ${localizeText(aptData.clinicName, 'en')}`
+      ),
+      doctorOrFacility: localizeText(aptData.doctorName, language),
+      badge: tr(language, 'موعد طبي', 'Rendez-vous médical', 'Medical Appointment'),
     });
   };
 
@@ -708,6 +842,7 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nowIso = new Date().toISOString();
     const target = familyMembers.find((m) => m.id === passData.patientId);
 
+    const isAr = language === 'ar';
     const newPass: DoctorSharePass = {
       ...passData,
       id: `share_${Date.now()}`,
@@ -715,7 +850,14 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: nowIso,
       accessCount: 0,
       qrValue: `https://tibbi.dz/share/pass/${randomCode}`,
-      consentedBy: passData.consentedBy || 'أمين مزيان (صاحب الحساب والولي)',
+      consentedBy:
+        passData.consentedBy ||
+        tr(
+          language,
+          'أمين مزيان (صاحب الحساب والولي)',
+          'Amine Meziane (Titulaire et tuteur)',
+          'Amine Meziane (Account Holder & Guardian)'
+        ),
       consentedAt: passData.consentedAt || nowIso,
     };
     setSharePasses((prev) => [newPass, ...prev]);
@@ -725,10 +867,23 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       action: 'create_share_pass',
       actionLabelAr: 'توليد رخصة مشاركة مؤقتة للطبيب (QR Pass)',
       actionLabelFr: 'Génération de clé de partage QR médecin',
-      actorName: passData.consentedBy || 'أمين مزيان (الولي وصاحب الملف)',
-      targetMemberName: target ? target.fullNameAr : 'المريض',
-      details: `مشاركة (${passData.title}) موجهة إلى: ${passData.doctorName || 'طبيب استشاري'} برمز: ${randomCode}`,
-      ipOrDevice: 'تطبيق TIBBI للويب',
+      actionLabelEn: 'Generated temporary doctor QR share pass',
+      actorName:
+        localizeText(passData.consentedBy, language) ||
+        tr(
+          language,
+          'أمين مزيان (الولي وصاحب الملف)',
+          'Amine Meziane (Titulaire et tuteur)',
+          'Amine Meziane (Account Holder & Guardian)'
+        ),
+      targetMemberName: target ? (isAr ? target.fullNameAr : target.fullNameFr) : tr(language, 'المريض', 'Patient', 'Patient'),
+      details: tr(
+        language,
+        `مشاركة (${passData.title}) موجهة إلى: ${passData.doctorName || 'طبيب استشاري'} برمز: ${randomCode}`,
+        `Partage (${localizeText(passData.title, 'fr')}) destiné à ${localizeText(passData.doctorName || 'Médecin consultant', 'fr')} • Code : ${randomCode}`,
+        `Shared (${localizeText(passData.title, 'en')}) with ${localizeText(passData.doctorName || 'Consulting Physician', 'en')} • Code: ${randomCode}`
+      ),
+      ipOrDevice: tr(language, 'تطبيق TIBBI للويب', 'Application Web TIBBI', 'TIBBI Web App'),
     });
 
     return newPass;
@@ -760,6 +915,8 @@ export const TibbiProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         theme,
         setTheme,
         toggleTheme,
+        lightBgTheme,
+        setLightBgTheme,
         activeTab,
         setActiveTab,
         goBack,

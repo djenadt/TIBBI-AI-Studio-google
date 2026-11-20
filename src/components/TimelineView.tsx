@@ -14,7 +14,8 @@ import {
   X,
 } from 'lucide-react';
 import { useTibbi } from '../context/TibbiContext';
-import { TimelineCategory, TimelineEvent } from '../types/tibbi';
+import { TimelineCategory, TimelineEvent, tr } from '../types/tibbi';
+import { localizeText } from '../utils/frTranslator';
 
 export const TimelineView: React.FC = () => {
   const {
@@ -73,7 +74,7 @@ export const TimelineView: React.FC = () => {
       date: form.date,
       description: form.description,
       doctorOrFacility: form.doctorOrFacility,
-      badge: form.badge || (isAr ? 'حدث صحي' : 'Événement'),
+      badge: form.badge || tr(language, 'حدث صحي', 'Événement', 'Health Event'),
     });
 
     setIsAddModalOpen(false);
@@ -95,12 +96,15 @@ export const TimelineView: React.FC = () => {
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Clock className="w-7 h-7 text-teal-600 dark:text-teal-400" />
-            <span>{isAr ? 'الخط الزمني لحياتك الصحية' : 'Chronologie & Ligne de Vie Médicale'}</span>
+            <span>{tr(language, 'الخط الزمني لحياتك الصحية', 'Chronologie & Ligne de Vie Médicale', 'Medical Timeline & Health History')}</span>
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {isAr
-              ? `التسلسل الزمني المتكامل لأحداث وتاريخ المريض: ${activeMember.fullNameAr} - من الطفولة وحتى اليوم.`
-              : `Fil conducteur chronologique complet de ${activeMember.fullNameFr} - Consultations, bilans et antécédents.`}
+            {tr(
+              language,
+              `التسلسل الزمني المتكامل لأحداث وتاريخ المريض: ${activeMember.fullNameAr} - من الطفولة وحتى اليوم.`,
+              `Fil conducteur chronologique complet de ${activeMember.fullNameFr} - Consultations, bilans et antécédents.`,
+              `Complete chronological health timeline for ${activeMember.fullNameFr} - Consultations, lab tests, and milestones.`
+            )}
           </p>
         </div>
 
@@ -109,7 +113,7 @@ export const TimelineView: React.FC = () => {
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white font-bold text-sm shadow-sm transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>{isAr ? '+ تسجيل حدث تاريخي' : '+ Ajouter un jalon'}</span>
+          <span>{tr(language, '+ تسجيل حدث تاريخي', '+ Ajouter un jalon', '+ Add Milestone')}</span>
         </button>
       </div>
 
@@ -117,12 +121,12 @@ export const TimelineView: React.FC = () => {
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
         <div className="flex items-center gap-1.5">
           {[
-            { id: 'all', labelAr: 'جميع الأحداث', labelFr: 'Tous' },
-            { id: 'consultation', labelAr: 'استشارات وزيارات', labelFr: 'Consultations' },
-            { id: 'prescription', labelAr: 'أدوية ووصفات', labelFr: 'Médicaments' },
-            { id: 'lab', labelAr: 'تحاليل مخبرية', labelFr: 'Analyses' },
-            { id: 'radiology', labelAr: 'أشعة وفحوصات', labelFr: 'Imagerie' },
-            { id: 'vaccine', labelAr: 'تطعيمات', labelFr: 'Vaccins' },
+            { id: 'all', labelAr: 'جميع الأحداث', labelFr: 'Tous', labelEn: 'All' },
+            { id: 'consultation', labelAr: 'استشارات وزيارات', labelFr: 'Consultations', labelEn: 'Consultations' },
+            { id: 'prescription', labelAr: 'أدوية ووصفات', labelFr: 'Médicaments', labelEn: 'Medications' },
+            { id: 'lab', labelAr: 'تحاليل مخبرية', labelFr: 'Analyses', labelEn: 'Lab Tests' },
+            { id: 'radiology', labelAr: 'أشعة وفحوصات', labelFr: 'Imagerie', labelEn: 'Imaging' },
+            { id: 'vaccine', labelAr: 'تطعيمات', labelFr: 'Vaccins', labelEn: 'Vaccines' },
           ].map((cat) => (
             <button
               key={cat.id}
@@ -133,21 +137,29 @@ export const TimelineView: React.FC = () => {
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              {isAr ? cat.labelAr : cat.labelFr}
+              {tr(language, cat.labelAr, cat.labelFr, cat.labelEn)}
             </button>
           ))}
         </div>
         <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-          {filteredEvents.length} {isAr ? 'أحداث' : 'événements'}
+          {filteredEvents.length} {tr(language, 'أحداث', 'événements', 'events')}
         </span>
       </div>
 
       {/* Vertical Interactive Timeline */}
-      <div className="relative border-r-2 border-teal-200 dark:border-teal-900/60 mr-4 sm:mr-6 pr-6 space-y-6">
+      <div
+        className={`relative border-teal-200 dark:border-teal-900/60 space-y-6 ${
+          isAr ? 'border-r-2 mr-4 sm:mr-6 pr-6' : 'border-l-2 ml-4 sm:ml-6 pl-6'
+        }`}
+      >
         {filteredEvents.map((event) => (
           <div key={event.id} className="relative group">
             {/* Timeline node dot */}
-            <div className="absolute -right-[33px] top-1.5 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border-4 border-teal-600 dark:border-teal-400 shadow-sm flex items-center justify-center group-hover:scale-125 transition-transform" />
+            <div
+              className={`absolute top-1.5 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border-4 border-teal-600 dark:border-teal-400 shadow-sm flex items-center justify-center group-hover:scale-125 transition-transform ${
+                isAr ? '-right-[37px]' : '-left-[37px]'
+              }`}
+            />
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-teal-400 dark:hover:border-teal-500 transition-all space-y-2">
               <div className="flex items-start justify-between gap-3">
@@ -157,11 +169,11 @@ export const TimelineView: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">
-                      {event.title}
+                      {localizeText(event.title, language)}
                     </h4>
                     {event.badge && (
                       <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-100 dark:border-teal-800/60 mt-0.5">
-                        {event.badge}
+                        {localizeText(event.badge, language)}
                       </span>
                     )}
                   </div>
@@ -174,12 +186,12 @@ export const TimelineView: React.FC = () => {
               </div>
 
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50/70 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                {event.description}
+                {localizeText(event.description, language)}
               </p>
 
               {event.doctorOrFacility && (
                 <div className="text-[11px] text-teal-800 dark:text-teal-300 font-semibold pt-1">
-                  🏥 {event.doctorOrFacility}
+                  🏥 {localizeText(event.doctorOrFacility, language)}
                 </div>
               )}
             </div>
@@ -194,7 +206,7 @@ export const TimelineView: React.FC = () => {
             <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                <span>{isAr ? 'تسجيل حدث صحي في الخط الزمني' : 'Ajouter un jalon médical'}</span>
+                <span>{tr(language, 'تسجيل حدث صحي في الخط الزمني', 'Ajouter un jalon médical', 'Add Medical Milestone')}</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -207,14 +219,14 @@ export const TimelineView: React.FC = () => {
             <form onSubmit={handleCreateEvent} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'عنوان الحدث الصحي *' : 'Titre de l’événement *'}
+                  {tr(language, 'عنوان الحدث الصحي *', 'Titre de l’événement *', 'Event Title *')}
                 </label>
                 <input
                   type="text"
                   required
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="مثال: إجراء عملية الزائدة الدودية، تشخيص حساسية..."
+                  placeholder={tr(language, 'مثال: إجراء عملية الزائدة الدودية، تشخيص حساسية...', 'Ex : Appendicectomie, diagnostic allergie...', 'e.g. Appendectomy, allergy diagnosis...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -222,25 +234,25 @@ export const TimelineView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'التصنيف' : 'Catégorie'}
+                    {tr(language, 'التصنيف', 'Catégorie', 'Category')}
                   </label>
                   <select
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value as TimelineCategory })}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   >
-                    <option value="consultation">{isAr ? 'استشارة طبية' : 'Consultation'}</option>
-                    <option value="prescription">{isAr ? 'وصفة علاجية' : 'Ordonnance'}</option>
-                    <option value="lab">{isAr ? 'تحليل مخبري' : 'Analyse'}</option>
-                    <option value="radiology">{isAr ? 'أشعة وتصوير' : 'Radiologie'}</option>
-                    <option value="surgery">{isAr ? 'عملية جراحية' : 'Chirurgie'}</option>
-                    <option value="vaccine">{isAr ? 'تطعيم / لقاح' : 'Vaccination'}</option>
+                    <option value="consultation">{tr(language, 'استشارة طبية', 'Consultation', 'Consultation')}</option>
+                    <option value="prescription">{tr(language, 'وصفة علاجية', 'Ordonnance', 'Prescription')}</option>
+                    <option value="lab">{tr(language, 'تحليل مخبري', 'Analyse', 'Lab Test')}</option>
+                    <option value="radiology">{tr(language, 'أشعة وتصوير', 'Radiologie', 'Radiology')}</option>
+                    <option value="surgery">{tr(language, 'عملية جراحية', 'Chirurgie', 'Surgery')}</option>
+                    <option value="vaccine">{tr(language, 'تطعيم / لقاح', 'Vaccination', 'Vaccination')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'التاريخ *' : 'Date *'}
+                    {tr(language, 'التاريخ *', 'Date *', 'Date *')}
                   </label>
                   <input
                     type="date"
@@ -254,26 +266,26 @@ export const TimelineView: React.FC = () => {
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'الطبيب أو المؤسسة الصحية' : 'Médecin ou Clinique'}
+                  {tr(language, 'الطبيب أو المؤسسة الصحية', 'Médecin ou Clinique', 'Doctor or Facility')}
                 </label>
                 <input
                   type="text"
                   value={form.doctorOrFacility}
                   onChange={(e) => setForm({ ...form, doctorOrFacility: e.target.value })}
-                  placeholder="د. ...، مستشفى مصطفى باشا..."
+                  placeholder={tr(language, 'د. ...، مستشفى مصطفى باشا...', 'Dr..., CHU Mustapha Pacha...', 'Dr..., Mustapha Pacha Hospital...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'تفاصيل الحدث وما تم فيه' : 'Description'}
+                  {tr(language, 'تفاصيل الحدث وما تم فيه', 'Description', 'Description')}
                 </label>
                 <textarea
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="النتائج، الأدوية الموصوفة، التوصيات..."
+                  placeholder={tr(language, 'النتائج، الأدوية الموصوفة، التوصيات...', 'Résultats, traitements prescrits, recommandations...', 'Results, prescribed treatments, recommendations...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -284,13 +296,13 @@ export const TimelineView: React.FC = () => {
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
                 >
-                  {isAr ? 'إلغاء' : 'Annuler'}
+                  {tr(language, 'إلغاء', 'Annuler', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white font-bold shadow-md cursor-pointer"
                 >
-                  {isAr ? 'حفظ في الخط الزمني' : 'Enregistrer'}
+                  {tr(language, 'حفظ في الخط الزمني', 'Enregistrer', 'Save Milestone')}
                 </button>
               </div>
 

@@ -2,7 +2,13 @@
  * TIBBI - Digital Health Platform Data Types
  */
 
-export type Language = 'ar' | 'fr';
+export type Language = 'ar' | 'fr' | 'en';
+
+export function tr<T>(language: Language, ar: T, fr: T, en: T): T {
+  if (language === 'ar') return ar;
+  if (language === 'en') return en;
+  return fr;
+}
 
 export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 
@@ -15,6 +21,7 @@ export interface FamilyMember {
   relationship: FamilyRelationship;
   relationshipLabelAr: string;
   relationshipLabelFr: string;
+  relationshipLabelEn?: string;
   gender: 'male' | 'female';
   birthDate: string; // YYYY-MM-DD
   bloodGroup: BloodGroup;
@@ -204,6 +211,7 @@ export interface AccessLogEntry {
   action: 'view_profile' | 'view_document' | 'unmask_id' | 'create_share_pass' | 'export_report' | 'update_record';
   actionLabelAr: string;
   actionLabelFr: string;
+  actionLabelEn?: string;
   actorName: string;
   targetMemberName: string;
   details?: string;
@@ -215,15 +223,19 @@ export interface HealthNotificationItem {
   type: 'medication' | 'appointment' | 'lab' | 'system';
   titleAr: string;
   titleFr: string;
+  titleEn?: string;
   messageAr: string;
   messageFr: string;
+  messageEn?: string;
   timestamp: string;
   isRead: boolean;
   priority: 'high' | 'medium' | 'info';
   patientId: string;
   patientNameAr: string;
   patientNameFr: string;
+  patientNameEn?: string;
   medScheduleId?: string;
   actionLabelAr?: string;
   actionLabelFr?: string;
+  actionLabelEn?: string;
 }

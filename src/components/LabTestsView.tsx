@@ -31,15 +31,101 @@ import {
   Tooltip,
   ReferenceLine,
   ReferenceArea,
+  LabelList,
 } from 'recharts';
 import { useTibbi } from '../context/TibbiContext';
-import { LabTest, LabCategory } from '../types/tibbi';
-import { evaluateLabValue } from '../utils/healthCalculators';
+import { LabTest, LabCategory, Language, tr } from '../types/tibbi';
+import {
+  evaluateLabValue,
+  formatChartNumericLabel,
+  resolveChartClickVitalId,
+} from '../utils/healthCalculators';
+import { ScrollableChartFrame } from './ScrollableChartFrame';
+import { localizeText, translateLabCategory } from '../utils/frTranslator';
 
-// Helper to translate medical notes to French with clinical precision
-function translateLabNote(note: string | undefined, isAr: boolean): string {
+// Helper to translate medical notes to French or English with clinical precision
+function translateLabNote(note: string | undefined, language: Language): string {
   if (!note) return '';
-  if (isAr) return note;
+  if (language === 'ar') return note;
+
+  if (language === 'en') {
+    if (note.includes('قيمة أولية مرتفعة') || note.includes('إنقاص الوزن')) {
+      return 'Moderately elevated initial value; dietary rebalancing and weight loss initiated.';
+    }
+    if (note.includes('تحسن ملحوظ') || note.includes('وجبات العشاء')) {
+      return 'Notable improvement after lighter dinners and reducing simple sugars.';
+    }
+    if (note.includes('استقرار ممتاز') || note.includes('النطاق الطبيعي')) {
+      return 'Excellent stabilization within the normal physiological range.';
+    }
+    if (note.includes('المشي المنتظم') || note.includes('مستوى منضبط')) {
+      return 'Well-controlled blood glucose alongside regular walking.';
+    }
+    if (note.includes('دوري سنوي') || note.includes('مستقرة تماماً') || note.includes('طبيعية ومستقرة')) {
+      return 'Annual routine panel; completely normal and stable result.';
+    }
+    if (note.includes('ارتفاع شحوم الدم') || note.includes('أوميغا 3')) {
+      return 'Mild dyslipidemia; Mediterranean diet and omega-3 prescribed.';
+    }
+    if (note.includes('استجابة أولية') || note.includes('انخفاض تدريجي')) {
+      return 'Positive initial therapeutic response with gradual cholesterol decline.';
+    }
+    if (note.includes('زيت الزيتون') || note.includes('الأسماك')) {
+      return 'Continue dietary adherence (olive oil and fatty fish).';
+    }
+    if (note.includes('حمية البحر المتوسط وممارسة المشي')) {
+      return 'Slightly above target; maintain Mediterranean diet and daily walking.';
+    }
+    if (note.includes('الهدف الوعائي') || note.includes('فوق الهدف')) {
+      return 'LDL above cardiovascular target; close monitoring required.';
+    }
+    if (note.includes('انخفاض مشجع')) {
+      return 'Favorable, encouraging progression toward therapeutic target.';
+    }
+    if (note.includes('مريض الضغط') || note.includes('3 أشهر')) {
+      return 'Slightly above target for hypertensive patient; recheck in 3 months.';
+    }
+    if (note.includes('سليمة وطبيعية قبل بدء')) {
+      return 'Normal renal function prior to starting antihypertensive therapy.';
+    }
+    if (note.includes('ترشيح كبيبي سليم')) {
+      return 'Excellent kidney function with preserved glomerular filtration.';
+    }
+    if (note.includes('وظائف كلى ممتازة')) {
+      return 'Excellent kidney function and normal clearance.';
+    }
+    if (note.includes('ما قبل السكري')) {
+      return 'HbA1c in early prediabetes range; lifestyle monitoring.';
+    }
+    if (note.includes('عودة إلى المعدل الطبيعي')) {
+      return 'Excellent return to normal physiological range.';
+    }
+    if (note.includes('تراكمي ممتاز') || note.includes('تراكمي مثالي')) {
+      return 'Optimal, stable HbA1c over the past 3 months.';
+    }
+    if (note.includes('بداية الحمل') || note.includes('الأسبوع 6')) {
+      return 'Initial pregnancy panel (6 wks GA); normal CBC.';
+    }
+    if (note.includes('الثلث الأول')) {
+      return '1st trimester follow-up; satisfactory hemoglobin level.';
+    }
+    if (note.includes('الثلث الثاني') && note.includes('فقر دم')) {
+      return '2nd trimester panel; no anemia despite physiological hemodilution.';
+    }
+    if (note.includes('مخزون حديد أولي')) {
+      return 'Optimal baseline iron stores ahead of peak fetal demand.';
+    }
+    if (note.includes('استهلاك الجنين') || note.includes('تارديفيرون B9')) {
+      return 'Increased fetal iron demand; Tardyferon B9 supplementation started.';
+    }
+    if (note.includes('تفادي فقر دم الثلث الثالث') || note.includes('تارديفيرون')) {
+      return 'Satisfactory level; maintain preventive 3rd trimester supplementation.';
+    }
+    if (note.includes('Séronégative') || note.includes('المقوسات')) {
+      return 'Seronegative: thoroughly wash raw produce, cook meats completely, and retest monthly.';
+    }
+    return localizeText(note, 'en');
+  }
 
   if (note.includes('قيمة أولية مرتفعة') || note.includes('إنقاص الوزن')) {
     return "Valeur initiale modérément élevée, initiation d'un rééquilibrage alimentaire et perte pondérale.";
@@ -117,24 +203,34 @@ function translateLabNote(note: string | undefined, isAr: boolean): string {
     return 'Séronégative : lavage strict des crudités, cuisson complète des viandes et contrôle mensuel.';
   }
 
-  return note;
+  return localizeText(note, 'fr');
 }
 
-// Helper to extract clean bilingual name for tests
-function cleanBiomarkerName(name: string, isAr: boolean): { display: string; short: string; key: string } {
+// Helper to extract clean localized name for tests
+function cleanBiomarkerName(name: string, language: Language): { display: string; short: string; key: string } {
   const match = name.match(/^(.*?)\s*\((.*?)\)$/);
   if (match) {
     const arPart = match[1].trim();
     const frPart = match[2].trim();
+    if (language === 'en') {
+      const enName = localizeText(name, 'en');
+      const enShort = enName !== name ? enName : localizeText(frPart, 'en');
+      return {
+        display: enShort,
+        short: enShort,
+        key: frPart.toLowerCase(),
+      };
+    }
     return {
-      display: isAr ? name : frPart,
-      short: isAr ? arPart : frPart,
+      display: language === 'ar' ? name : frPart,
+      short: language === 'ar' ? arPart : frPart,
       key: frPart.toLowerCase(),
     };
   }
+  const localized = localizeText(name, language);
   return {
-    display: name,
-    short: name,
+    display: localized,
+    short: localized,
     key: name.toLowerCase(),
   };
 }
@@ -155,6 +251,7 @@ export const LabTestsView: React.FC = () => {
 
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedBiomarkerKey, setSelectedBiomarkerKey] = useState<string>('');
+  const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [chartType, setChartType] = useState<'area' | 'line'>('area');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -179,6 +276,7 @@ export const LabTestsView: React.FC = () => {
       tooltipBg: isDark ? '#0f172a' : '#ffffff', // slate-900 vs white
       tooltipBorder: isDark ? '#334155' : '#e2e8f0', // slate-700 vs slate-200
       primary: '#0d9488', // teal-600
+      primaryLabel: isDark ? '#5eead4' : '#0f766e',
       primaryLight: '#14b8a6', // teal-500
       gradientStart: isDark ? 'rgba(13, 148, 136, 0.45)' : 'rgba(13, 148, 136, 0.25)',
       gradientEnd: isDark ? 'rgba(13, 148, 136, 0.0)' : 'rgba(13, 148, 136, 0.01)',
@@ -196,6 +294,7 @@ export const LabTestsView: React.FC = () => {
         key: string;
         nameAr: string;
         nameFr: string;
+        nameEn: string;
         fullName: string;
         category: LabCategory;
         unit: string;
@@ -206,7 +305,8 @@ export const LabTestsView: React.FC = () => {
     >();
 
     activeMemberLabTests.forEach((test) => {
-      const { short, key } = cleanBiomarkerName(test.testName, isAr);
+      const { key } = cleanBiomarkerName(test.testName, language);
+      const { short: enShort } = cleanBiomarkerName(test.testName, 'en');
       const match = test.testName.match(/^(.*?)\s*\((.*?)\)$/);
       const nameAr = match ? match[1].trim() : test.testName;
       const nameFr = match ? match[2].trim() : test.testName;
@@ -216,6 +316,7 @@ export const LabTestsView: React.FC = () => {
           key,
           nameAr,
           nameFr,
+          nameEn: enShort,
           fullName: test.testName,
           category: test.category,
           unit: test.unit,
@@ -240,7 +341,7 @@ export const LabTestsView: React.FC = () => {
 
     // Sort groups by tests count descending (so biomarkers with timeline come first)
     return result.sort((a, b) => b.tests.length - a.tests.length);
-  }, [activeMemberLabTests, isAr]);
+  }, [activeMemberLabTests, language]);
 
   // Determine currently active biomarker group for charts
   const activeBiomarker = useMemo(() => {
@@ -262,7 +363,7 @@ export const LabTestsView: React.FC = () => {
       const evaluation = evaluateLabValue(t.value, t.referenceMin, t.referenceMax);
       const parts = t.date.split('-');
       const formattedDate = `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`; // DD/MM/YY
-      const translatedNote = translateLabNote(t.notes, isAr);
+      const translatedNote = translateLabNote(t.notes, language);
 
       return {
         id: t.id,
@@ -275,12 +376,24 @@ export const LabTestsView: React.FC = () => {
         referenceMax: t.referenceMax,
         isAbnormal: t.isAbnormal || evaluation.status !== 'normal',
         evaluation,
-        laboratory: t.laboratory,
-        doctor: t.prescribingDoctor,
+        laboratory: localizeText(t.laboratory, language),
+        doctor: localizeText(t.prescribingDoctor, language),
         notes: translatedNote,
       };
     });
-  }, [activeBiomarker, isAr]);
+  }, [activeBiomarker, language]);
+
+  const selectedChartTest = useMemo(() => {
+    if (!selectedTestId) return null;
+    return chartData.find((d) => d.id === selectedTestId) ?? null;
+  }, [chartData, selectedTestId]);
+
+  const handleLabChartClick = (state: any) => {
+    const clickedId = resolveChartClickVitalId(chartData, state);
+    if (clickedId) {
+      setSelectedTestId(clickedId);
+    }
+  };
 
   // Statistics & Evolution for active biomarker
   const biomarkerStats = useMemo(() => {
@@ -338,7 +451,7 @@ export const LabTestsView: React.FC = () => {
       referenceMin: minRef,
       referenceMax: maxRef,
       date: form.date,
-      laboratory: form.laboratory || (isAr ? 'مخبر التحاليل الطبية' : 'Laboratoire d’analyses'),
+      laboratory: form.laboratory || tr(language, 'مخبر التحاليل الطبية', 'Laboratoire d’analyses', 'Medical Laboratory'),
       prescribingDoctor: form.prescribingDoctor,
       notes: form.notes,
       isAbnormal: evaluation.status !== 'normal',
@@ -387,14 +500,14 @@ export const LabTestsView: React.FC = () => {
             }`}
           >
             {isAbnormal
-              ? isAr ? data.evaluation.labelAr : data.evaluation.labelFr
-              : isAr ? 'طبيعي وسوي' : 'Dans les normes'}
+              ? tr(language, data.evaluation.labelAr, data.evaluation.labelFr, data.evaluation.labelEn)
+              : tr(language, 'طبيعي وسوي', 'Dans les normes', 'Within Normal Range')}
           </span>
         </div>
 
         <div className="flex items-baseline justify-between pt-1">
           <span className="text-slate-500 dark:text-slate-400 font-medium">
-            {isAr ? 'النتيجة المقاسة:' : 'Valeur mesurée :'}
+            {tr(language, 'النتيجة المقاسة:', 'Valeur mesurée :', 'Measured Value:')}
           </span>
           <div className="font-mono">
             <span className={`text-xl font-black ${isAbnormal ? 'text-amber-600 dark:text-amber-400' : 'text-teal-600 dark:text-teal-400'}`}>
@@ -406,7 +519,7 @@ export const LabTestsView: React.FC = () => {
 
         {data.referenceMin !== undefined && data.referenceMax !== undefined && (
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/80 p-2 rounded-xl">
-            <span>{isAr ? 'المجال المرجعي:' : 'Norme réf. :'}</span>
+            <span>{tr(language, 'المجال المرجعي:', 'Norme réf. :', 'Reference Range:')}</span>
             <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
               {data.referenceMin} - {data.referenceMax} {data.unit}
             </span>
@@ -429,22 +542,82 @@ export const LabTestsView: React.FC = () => {
     );
   };
 
-  // Custom Dot component to highlight normal vs abnormal readings
-  const CustomDot = (props: any) => {
-    const { cx, cy, payload } = props;
-    if (!cx || !cy) return null;
+  // Custom Dot component to highlight normal vs abnormal readings and support click-to-inspect
+  const renderLabDot = (isActive = false) => (props: any) => {
+    const { cx, cy, payload, value, index } = props;
+    const scalarValue = Array.isArray(value) ? value[1] : value;
+    if (cx == null || cy == null || scalarValue == null || !payload?.id) {
+      return <g key={`lab-dot-empty-${index ?? 0}`} />;
+    }
     const isAbnormal = payload.isAbnormal;
+    const isSelected = selectedTestId === payload.id;
+    const baseColor = isAbnormal ? '#f59e0b' : '#0d9488';
+
+    if (isActive) {
+      return (
+        <g
+          key={`lab-dot-${payload.id}-active`}
+          style={{ pointerEvents: 'none' }}
+        >
+          <circle
+            cx={cx}
+            cy={cy}
+            r={10}
+            fill={baseColor}
+            fillOpacity={0.2}
+            stroke={baseColor}
+            strokeWidth={1.5}
+          />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={6}
+            fill={baseColor}
+            stroke="#ffffff"
+            strokeWidth={2}
+          />
+        </g>
+      );
+    }
 
     return (
-      <g>
-        {isAbnormal ? (
-          <>
-            <circle cx={cx} cy={cy} r={7} fill="#f59e0b" fillOpacity={0.25} />
-            <circle cx={cx} cy={cy} r={4.5} fill="#f59e0b" stroke="#ffffff" strokeWidth={1.5} />
-          </>
-        ) : (
-          <circle cx={cx} cy={cy} r={4.5} fill="#0d9488" stroke="#ffffff" strokeWidth={1.5} />
+      <g
+        key={`lab-dot-${payload.id}-base`}
+        role="button"
+        tabIndex={0}
+        aria-label={`${payload.fullDate}: ${scalarValue}`}
+        style={{ cursor: 'pointer', outline: 'none' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedTestId(payload.id);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setSelectedTestId(payload.id);
+          }
+        }}
+      >
+        {(isAbnormal || isSelected) && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={isSelected ? 10 : 7}
+            fill={baseColor}
+            fillOpacity={isSelected ? 0.22 : 0.25}
+            stroke={isSelected ? baseColor : 'none'}
+            strokeWidth={isSelected ? 1.5 : 0}
+          />
         )}
+        <circle cx={cx} cy={cy} r={13} fill="transparent" />
+        <circle
+          cx={cx}
+          cy={cy}
+          r={isSelected ? 6 : 4.5}
+          fill={baseColor}
+          stroke="#ffffff"
+          strokeWidth={isSelected ? 2 : 1.5}
+        />
       </g>
     );
   };
@@ -457,12 +630,15 @@ export const LabTestsView: React.FC = () => {
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <FlaskConical className="w-7 h-7 text-teal-600 dark:text-teal-400" />
-            <span>{isAr ? 'متابعة التحاليل والفحوصات الطبية' : 'Suivi des Analyses Biologiques & Examens'}</span>
+            <span>{tr(language, 'متابعة التحاليل والفحوصات الطبية', 'Suivi des Analyses Biologiques & Examens', 'Lab Tests & Biomarker Tracking')}</span>
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {isAr
-              ? `سجل التحاليل المخبرية للمريض: ${activeMember.fullNameAr} - المقارنة الزمنية والمجالات المرجعية وتنبيهات القيم الشاذة.`
-              : `Analyses médicales de ${activeMember.fullNameFr} - Évolution chronologique Recharts et valeurs cibles.`}
+            {tr(
+              language,
+              `سجل التحاليل المخبرية للمريض: ${activeMember.fullNameAr} - المقارنة الزمنية والمجالات المرجعية وتنبيهات القيم الشاذة.`,
+              `Analyses médicales de ${activeMember.fullNameFr} - Évolution chronologique et valeurs cibles.`,
+              `Lab results for ${activeMember.fullNameFr} - Chronological trends, reference ranges, and out-of-range alerts.`
+            )}
           </p>
         </div>
 
@@ -471,14 +647,14 @@ export const LabTestsView: React.FC = () => {
             onClick={() => setActiveTab('archive')}
             className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer shadow-2xs transition-colors"
           >
-            <span>{isAr ? 'استخراج من ورقة مخبر (OCR)' : 'Scanner un bilan (OCR)'}</span>
+            <span>{tr(language, 'استخراج من ورقة مخبر (OCR)', 'Scanner un bilan (OCR)', 'Scan Lab Report (OCR)')}</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm cursor-pointer transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>{isAr ? '+ تسجيل نتيجة تحليل' : '+ Ajouter une analyse'}</span>
+            <span>{tr(language, '+ تسجيل نتيجة تحليل', '+ Ajouter une analyse', '+ Add Lab Result')}</span>
           </button>
         </div>
       </div>
@@ -498,12 +674,15 @@ export const LabTestsView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
-                    {isAr ? 'تطور نتائج التحاليل عبر الزمن (Recharts)' : 'Évolution Chronologique des Biomarqueurs (Recharts)'}
+                    {tr(language, 'تطور نتائج التحاليل عبر الزمن', 'Évolution Chronologique des Biomarqueurs', 'Chronological Biomarker Trends')}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {isAr
-                      ? 'مخطط بياني تفاعلي يبرز مسار المؤشرات الحيوية مقارنة بالمجال المرجعي السوي'
-                      : 'Suivi interactif de la cinétique biologique par rapport à la zone physiologique cible'}
+                    {tr(
+                      language,
+                      'اضغط على أي نتيجة في الخط البياني لعرض التفاصيل الكاملة ومقارنتها بالمجال المرجعي',
+                      'Cliquez sur un point de la courbe pour afficher les détails complets de l’analyse',
+                      'Click any point on the chart line to view full result details and reference range'
+                    )}
                   </p>
                 </div>
               </div>
@@ -521,7 +700,7 @@ export const LabTestsView: React.FC = () => {
                   }`}
                 >
                   <AreaChartIcon className="w-3.5 h-3.5" />
-                  <span>{isAr ? 'مخطط المساحة' : 'Aire'}</span>
+                  <span>{tr(language, 'مخطط المساحة', 'Aire', 'Area')}</span>
                 </button>
                 <button
                   onClick={() => setChartType('line')}
@@ -532,7 +711,7 @@ export const LabTestsView: React.FC = () => {
                   }`}
                 >
                   <LineChartIcon className="w-3.5 h-3.5" />
-                  <span>{isAr ? 'مخطط خطي' : 'Ligne'}</span>
+                  <span>{tr(language, 'مخطط خطي', 'Ligne', 'Line')}</span>
                 </button>
               </div>
             </div>
@@ -541,17 +720,20 @@ export const LabTestsView: React.FC = () => {
           {/* Biomarkers Selector Tabs / Pills */}
           <div className="space-y-2">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              {isAr ? 'اختر المؤشر المخبري لمشاهدة تطوره:' : 'Sélectionnez le biomarqueur à analyser :'}
+              {tr(language, 'اختر المؤشر المخبري لمشاهدة تطوره:', 'Sélectionnez le biomarqueur à analyser :', 'Select biomarker to analyze:')}
             </span>
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
               {biomarkerGroups.map((grp) => {
                 const isSelected = grp.key === activeBiomarker.key;
-                const displayName = isAr ? grp.nameAr : grp.nameFr;
+                const displayName = tr(language, grp.nameAr, grp.nameFr, grp.nameEn);
 
                 return (
                   <button
                     key={grp.key}
-                    onClick={() => setSelectedBiomarkerKey(grp.key)}
+                    onClick={() => {
+                      setSelectedBiomarkerKey(grp.key);
+                      setSelectedTestId(null);
+                    }}
                     className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
@@ -581,7 +763,7 @@ export const LabTestsView: React.FC = () => {
               {/* Latest Value Card */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-                  {isAr ? 'آخر نتيجة مقاسة' : 'Dernière valeur'}
+                  {tr(language, 'آخر نتيجة مقاسة', 'Dernière valeur', 'Latest Value')}
                 </span>
                 <div className="mt-1 flex items-baseline gap-1.5">
                   <span
@@ -606,7 +788,7 @@ export const LabTestsView: React.FC = () => {
               {/* Evolution & Variation Card */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-                  {isAr ? 'التغير الكلي' : 'Évolution globale'}
+                  {tr(language, 'التغير الكلي', 'Évolution globale', 'Overall Change')}
                 </span>
                 <div className="mt-1 flex items-baseline gap-1.5">
                   <span
@@ -624,12 +806,12 @@ export const LabTestsView: React.FC = () => {
                   {biomarkerStats.delta <= 0 ? (
                     <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
                       <TrendingDown className="w-3 h-3" />
-                      <span>{isAr ? 'انخفاض نحو الهدف' : 'Baisse favorable'}</span>
+                      <span>{tr(language, 'انخفاض نحو الهدف', 'Baisse favorable', 'Favorable decrease')}</span>
                     </span>
                   ) : (
                     <span className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
                       <TrendingUp className="w-3 h-3" />
-                      <span>{isAr ? 'ارتفاع تدريجي' : 'Hausse progressive'}</span>
+                      <span>{tr(language, 'ارتفاع تدريجي', 'Hausse progressive', 'Gradual increase')}</span>
                     </span>
                   )}
                 </div>
@@ -638,7 +820,7 @@ export const LabTestsView: React.FC = () => {
               {/* Reference Range Target Card */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-                  {isAr ? 'المجال المرجعي السوي' : 'Norme physiologique'}
+                  {tr(language, 'المجال المرجعي السوي', 'Norme physiologique', 'Reference Range')}
                 </span>
                 <div className="mt-1 flex items-baseline gap-1">
                   <span className="text-lg font-black font-mono text-slate-800 dark:text-slate-200">
@@ -650,14 +832,14 @@ export const LabTestsView: React.FC = () => {
                 </div>
                 <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
-                  <span>{isAr ? 'النطاق المستهدف' : 'Zone cible'}</span>
+                  <span>{tr(language, 'النطاق المستهدف', 'Zone cible', 'Target zone')}</span>
                 </div>
               </div>
 
               {/* Average & Readings Count Card */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-                  {isAr ? 'المتوسط الحسابي' : 'Moyenne calculée'}
+                  {tr(language, 'المتوسط الحسابي', 'Moyenne calculée', 'Calculated Average')}
                 </span>
                 <div className="mt-1 flex items-baseline gap-1">
                   <span className="text-2xl font-black font-mono text-slate-800 dark:text-slate-200">
@@ -669,11 +851,97 @@ export const LabTestsView: React.FC = () => {
                 </div>
                 <div className="mt-1 text-[10px] text-slate-400 dark:text-slate-500 font-bold">
                   <span>
-                    {biomarkerStats.count} {isAr ? 'فحوصات مسجلة' : 'mesures au total'}
+                    {biomarkerStats.count} {tr(language, 'فحوصات مسجلة', 'mesures au total', 'total readings')}
                   </span>
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* Selected Lab Result Details Panel (shown when clicking a point on the chart line) */}
+          {selectedChartTest && (
+            <div
+              data-testid="lab-selected-details"
+              className="rounded-2xl bg-teal-50/85 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/70 p-4 space-y-3 transition-all"
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-teal-200/70 dark:border-teal-800/60 pb-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-700 dark:bg-teal-600 text-white text-xs font-bold">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span dir="ltr" className="font-mono">{selectedChartTest.fullDate}</span>
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+                      selectedChartTest.isAbnormal
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                    }`}
+                  >
+                    {selectedChartTest.isAbnormal
+                      ? tr(language, selectedChartTest.evaluation.labelAr, selectedChartTest.evaluation.labelFr, selectedChartTest.evaluation.labelEn)
+                      : tr(language, 'ضمن المعدل الطبيعي', 'Dans les normes', 'Within Normal Range')}
+                  </span>
+                  <span className="text-xs font-bold text-teal-900 dark:text-teal-200">
+                    {tr(language, activeBiomarker.nameAr, activeBiomarker.nameFr, activeBiomarker.nameEn)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTestId(null)}
+                  aria-label={tr(language, 'إغلاق تفاصيل النتيجة', 'Fermer les détails', 'Close result details')}
+                  className="p-1 rounded-lg text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="bg-white/90 dark:bg-slate-900/80 rounded-xl p-2.5 border border-teal-100 dark:border-slate-800">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                    {tr(language, 'النتيجة المقاسة', 'Valeur mesurée', 'Measured Value')}
+                  </span>
+                  <span
+                    dir="ltr"
+                    className={`font-mono font-extrabold text-base inline-block ${
+                      selectedChartTest.isAbnormal ? 'text-amber-600 dark:text-amber-400' : 'text-teal-700 dark:text-teal-400'
+                    }`}
+                  >
+                    {selectedChartTest.value} {selectedChartTest.unit}
+                  </span>
+                </div>
+
+                <div className="bg-white/90 dark:bg-slate-900/80 rounded-xl p-2.5 border border-teal-100 dark:border-slate-800">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                    {tr(language, 'المجال المرجعي', 'Norme de référence', 'Reference Range')}
+                  </span>
+                  <span dir="ltr" className="font-mono font-bold text-sm text-slate-900 dark:text-slate-100 inline-block">
+                    {selectedChartTest.referenceMin !== undefined && selectedChartTest.referenceMax !== undefined
+                      ? `${selectedChartTest.referenceMin} - ${selectedChartTest.referenceMax} ${selectedChartTest.unit}`
+                      : '--'}
+                  </span>
+                </div>
+
+                <div className="bg-white/90 dark:bg-slate-900/80 rounded-xl p-2.5 border border-teal-100 dark:border-slate-800">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                    {tr(language, 'المخبر والطبيب', 'Laboratoire & Médecin', 'Laboratory & Doctor')}
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">
+                    {selectedChartTest.laboratory ? localizeText(selectedChartTest.laboratory, language) : '--'}
+                  </span>
+                  {selectedChartTest.doctor && (
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">
+                      {localizeText(selectedChartTest.doctor, language)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {selectedChartTest.notes && (
+                <p className="text-xs text-slate-700 dark:text-slate-300 bg-white/80 dark:bg-slate-900/60 px-3 py-2 rounded-xl border border-teal-100/80 dark:border-slate-800">
+                  {translateLabNote(selectedChartTest.notes, language)}
+                </p>
+              )}
             </div>
           )}
 
@@ -686,14 +954,14 @@ export const LabTestsView: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-teal-600" />
                   <span className="font-bold text-slate-700 dark:text-slate-300">
-                    {isAr ? activeBiomarker.nameAr : activeBiomarker.nameFr} ({activeBiomarker.unit})
+                    {tr(language, activeBiomarker.nameAr, activeBiomarker.nameFr, activeBiomarker.nameEn)} ({activeBiomarker.unit})
                   </span>
                 </div>
                 {activeBiomarker.referenceMax !== undefined && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500" />
                     <span className="text-slate-500 dark:text-slate-400 font-medium">
-                      {isAr ? 'الحد الأقصى' : 'Max réf.'}: {activeBiomarker.referenceMax}
+                      {tr(language, 'الحد الأقصى', 'Max réf.', 'Ref. Max')}: {activeBiomarker.referenceMax}
                     </span>
                   </div>
                 )}
@@ -701,7 +969,7 @@ export const LabTestsView: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-0.5 border-t-2 border-dashed border-emerald-500" />
                     <span className="text-slate-500 dark:text-slate-400 font-medium">
-                      {isAr ? 'الحد الأدنى' : 'Min réf.'}: {activeBiomarker.referenceMin}
+                      {tr(language, 'الحد الأدنى', 'Min réf.', 'Ref. Min')}: {activeBiomarker.referenceMin}
                     </span>
                   </div>
                 )}
@@ -709,17 +977,26 @@ export const LabTestsView: React.FC = () => {
 
               <div className="flex items-center gap-2 text-[11px] text-slate-400">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                <span>{isAr ? 'نقطة سويّة' : 'Normale'}</span>
+                <span>{tr(language, 'نقطة سويّة', 'Normale', 'Normal')}</span>
                 <span className="inline-block w-2 h-2 rounded-full bg-amber-500 ml-1" />
-                <span>{isAr ? 'شاذة / تتطلب متابعة' : 'À surveiller'}</span>
+                <span>{tr(language, 'شاذة / تتطلب متابعة', 'À surveiller', 'Monitor')}</span>
               </div>
             </div>
 
             {/* Recharts Container */}
-            <div className="h-72 w-full">
+            <ScrollableChartFrame
+              pointCount={chartData.length}
+              heightClass="h-72"
+              language={language}
+              testId="labs-biomarker-chart-scroll"
+            >
               <ResponsiveContainer width="100%" height="100%">
                 {chartType === 'area' ? (
-                  <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
+                  <AreaChart
+                    data={chartData}
+                    margin={{ top: 26, right: 24, left: 4, bottom: 8 }}
+                    onClick={handleLabChartClick}
+                  >
                     <defs>
                       <linearGradient id="labBiomarkerGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={chartTheme.primary} stopOpacity={isDark ? 0.45 : 0.25} />
@@ -733,6 +1010,7 @@ export const LabTestsView: React.FC = () => {
                       tick={{ fill: chartTheme.axisText, fontSize: 11, fontWeight: 600 }}
                       tickLine={false}
                       axisLine={{ stroke: chartTheme.grid }}
+                      padding={{ left: 32, right: 26 }}
                     />
                     <YAxis
                       domain={['auto', 'auto']}
@@ -740,7 +1018,7 @@ export const LabTestsView: React.FC = () => {
                       tick={{ fill: chartTheme.axisText, fontSize: 11, fontWeight: 600 }}
                       tickLine={false}
                       axisLine={false}
-                      unit={` ${activeBiomarker.unit}`}
+                      width={44}
                     />
                     <Tooltip content={<CustomLabTooltip />} />
 
@@ -780,12 +1058,27 @@ export const LabTestsView: React.FC = () => {
                       strokeWidth={2.5}
                       fillOpacity={1}
                       fill="url(#labBiomarkerGradient)"
-                      dot={<CustomDot />}
-                      activeDot={{ r: 6, fill: chartTheme.primary, stroke: '#ffffff', strokeWidth: 2 }}
-                    />
+                      isAnimationActive={false}
+                      dot={renderLabDot(false)}
+                      activeDot={renderLabDot(true)}
+                    >
+                      <LabelList
+                        dataKey="value"
+                        position="top"
+                        offset={10}
+                        formatter={formatChartNumericLabel}
+                        fill={chartTheme.primaryLabel}
+                        fontSize={11}
+                        fontWeight={700}
+                      />
+                    </Area>
                   </AreaChart>
                 ) : (
-                  <LineChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 26, right: 24, left: 4, bottom: 8 }}
+                    onClick={handleLabChartClick}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
                     <XAxis
                       dataKey="date"
@@ -793,6 +1086,7 @@ export const LabTestsView: React.FC = () => {
                       tick={{ fill: chartTheme.axisText, fontSize: 11, fontWeight: 600 }}
                       tickLine={false}
                       axisLine={{ stroke: chartTheme.grid }}
+                      padding={{ left: 32, right: 26 }}
                     />
                     <YAxis
                       domain={['auto', 'auto']}
@@ -800,7 +1094,7 @@ export const LabTestsView: React.FC = () => {
                       tick={{ fill: chartTheme.axisText, fontSize: 11, fontWeight: 600 }}
                       tickLine={false}
                       axisLine={false}
-                      unit={` ${activeBiomarker.unit}`}
+                      width={44}
                     />
                     <Tooltip content={<CustomLabTooltip />} />
 
@@ -829,13 +1123,24 @@ export const LabTestsView: React.FC = () => {
                       dataKey="value"
                       stroke={chartTheme.primary}
                       strokeWidth={2.5}
-                      dot={<CustomDot />}
-                      activeDot={{ r: 6, fill: chartTheme.primary, stroke: '#ffffff', strokeWidth: 2 }}
-                    />
+                      isAnimationActive={false}
+                      dot={renderLabDot(false)}
+                      activeDot={renderLabDot(true)}
+                    >
+                      <LabelList
+                        dataKey="value"
+                        position="top"
+                        offset={10}
+                        formatter={formatChartNumericLabel}
+                        fill={chartTheme.primaryLabel}
+                        fontSize={11}
+                        fontWeight={700}
+                      />
+                    </Line>
                   </LineChart>
                 )}
               </ResponsiveContainer>
-            </div>
+            </ScrollableChartFrame>
           </div>
 
           {/* Clinical Trend Insights Banner */}
@@ -844,10 +1149,10 @@ export const LabTestsView: React.FC = () => {
               <Activity className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
               <div className="space-y-1 text-xs text-slate-700 dark:text-slate-300">
                 <span className="font-extrabold text-teal-900 dark:text-teal-300 block">
-                  {isAr ? 'التحليل السريري للذاكرة المخبرية:' : 'Synthèse et Cinétique Clinique :'}
+                  {tr(language, 'التحليل السريري للذاكرة المخبرية:', 'Synthèse et Cinétique Clinique :', 'Clinical Lab Trend Summary:')}
                 </span>
                 <p className="leading-relaxed">
-                  {isAr ? (
+                  {language === 'ar' ? (
                     <>
                       يظهر التحليل البيولوجي لمؤشر <strong>{activeBiomarker.nameAr}</strong> تسجيل{' '}
                       <strong>{biomarkerStats.count}</strong> قياسات متعاقبة. القيمة الأخيرة المسجلة هي{' '}
@@ -859,7 +1164,7 @@ export const LabTestsView: React.FC = () => {
                         ? 'النتيجة تحتاج إلى مواصلة الخطة الوقائية أو استشارة الطبيب لتعديل العلاج.'
                         : 'النتيجة مستقرة ومثالية وضمن النطاق المرجعي الآمن.'}
                     </>
-                  ) : (
+                  ) : language === 'fr' ? (
                     <>
                       La cinétique du marqueur <strong>{activeBiomarker.nameFr}</strong> comporte{' '}
                       <strong>{biomarkerStats.count}</strong> prélèvements successifs. Le dernier résultat est de{' '}
@@ -870,6 +1175,18 @@ export const LabTestsView: React.FC = () => {
                       {biomarkerStats.latest.isAbnormal
                         ? 'Valeur au-dessus de la cible, nécessitant le maintien des mesures diététiques et avis médical.'
                         : 'Valeur équilibrée et stable, parfaitement située dans les normes de référence.'}
+                    </>
+                  ) : (
+                    <>
+                      The longitudinal trend for <strong>{activeBiomarker.nameEn}</strong> includes{' '}
+                      <strong>{biomarkerStats.count}</strong> consecutive measurements. The most recent value is{' '}
+                      <strong>
+                        {biomarkerStats.latest.value} {activeBiomarker.unit}
+                      </strong>{' '}
+                      on {biomarkerStats.latest.fullDate}.{' '}
+                      {biomarkerStats.latest.isAbnormal
+                        ? 'Result is outside the target range and requires ongoing lifestyle measures and medical follow-up.'
+                        : 'Value is stable and well within the physiological reference range.'}
                     </>
                   )}
                 </p>
@@ -886,11 +1203,11 @@ export const LabTestsView: React.FC = () => {
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
         <div className="flex items-center gap-1.5">
           {[
-            { id: 'all', labelAr: 'جميع التحاليل المسجلة', labelFr: 'Toutes les analyses' },
-            { id: 'biochimie', labelAr: 'كيمياء حيوية (سكر، دهون، كلى)', labelFr: 'Biochimie' },
-            { id: 'hematologie', labelAr: 'أمراض الدم (NFS)', labelFr: 'Hématologie' },
-            { id: 'hormonologie', labelAr: 'هرمونات (TSH، غدة)', labelFr: 'Hormonologie' },
-            { id: 'serologie', labelAr: 'مصليات ومناعة', labelFr: 'Sérologie' },
+            { id: 'all', labelAr: 'جميع التحاليل المسجلة', labelFr: 'Toutes les analyses', labelEn: 'All Lab Tests' },
+            { id: 'biochimie', labelAr: 'كيمياء حيوية (سكر، دهون، كلى)', labelFr: 'Biochimie', labelEn: 'Biochemistry' },
+            { id: 'hematologie', labelAr: 'أمراض الدم (NFS)', labelFr: 'Hématologie', labelEn: 'Hematology (CBC)' },
+            { id: 'hormonologie', labelAr: 'هرمونات (TSH، غدة)', labelFr: 'Hormonologie', labelEn: 'Hormonology' },
+            { id: 'serologie', labelAr: 'مصليات ومناعة', labelFr: 'Sérologie', labelEn: 'Serology' },
           ].map((cat) => (
             <button
               key={cat.id}
@@ -901,12 +1218,12 @@ export const LabTestsView: React.FC = () => {
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              {isAr ? cat.labelAr : cat.labelFr}
+              {tr(language, cat.labelAr, cat.labelFr, cat.labelEn)}
             </button>
           ))}
         </div>
         <span className="text-xs text-slate-400 dark:text-slate-400 font-medium whitespace-nowrap">
-          {filteredTests.length} {isAr ? 'فحوصات' : 'analyses'}
+          {filteredTests.length} {tr(language, 'فحوصات', 'analyses', 'tests')}
         </span>
       </div>
 
@@ -915,7 +1232,7 @@ export const LabTestsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
           <FlaskConical className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {isAr ? 'لا توجد تحاليل مسجلة في هذا القسم.' : 'Aucune analyse enregistrée dans cette catégorie.'}
+            {tr(language, 'لا توجد تحاليل مسجلة في هذا القسم.', 'Aucune analyse enregistrée dans cette catégorie.', 'No lab tests recorded in this category.')}
           </p>
         </div>
       ) : (
@@ -923,8 +1240,8 @@ export const LabTestsView: React.FC = () => {
           {filteredTests.map((test) => {
             const evaluation = evaluateLabValue(test.value, test.referenceMin, test.referenceMax);
             const isAbnormal = test.isAbnormal || evaluation.status !== 'normal';
-            const { display } = cleanBiomarkerName(test.testName, isAr);
-            const translatedNote = translateLabNote(test.notes, isAr);
+            const { display } = cleanBiomarkerName(test.testName, language);
+            const translatedNote = translateLabNote(test.notes, language);
 
             // Calculate progress bar representation between min and max
             let percentPosition = 50;
@@ -948,7 +1265,7 @@ export const LabTestsView: React.FC = () => {
                 <div className="space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
-                      {test.category}
+                      {translateLabCategory(test.category, language)}
                     </span>
                     <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
@@ -963,9 +1280,9 @@ export const LabTestsView: React.FC = () => {
                   {/* Value Display */}
                   <div className="flex items-baseline justify-between pt-1">
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                      {isAr ? 'النتيجة المقاسة:' : 'Valeur :'}
+                      {tr(language, 'النتيجة المقاسة:', 'Valeur :', 'Result:')}
                     </span>
-                    <div className="text-right">
+                    <div className="text-end shrink-0">
                       <span className={`text-xl font-black font-mono ${isAbnormal ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
                         {test.value}
                       </span>
@@ -999,12 +1316,12 @@ export const LabTestsView: React.FC = () => {
                     {isAbnormal ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-bold">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>{isAr ? evaluation.labelAr : evaluation.labelFr}</span>
+                        <span>{tr(language, evaluation.labelAr, evaluation.labelFr, evaluation.labelEn)}</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>{isAr ? 'ضمن المعدل الطبيعي' : 'Dans les normes'}</span>
+                        <span>{tr(language, 'ضمن المعدل الطبيعي', 'Dans les normes', 'Within Normal Range')}</span>
                       </span>
                     )}
                   </div>
@@ -1012,13 +1329,13 @@ export const LabTestsView: React.FC = () => {
                   {test.laboratory && (
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-1">
                       <Building className="w-3 h-3 text-slate-400" />
-                      <span className="truncate">{test.laboratory}</span>
+                      <span className="truncate">{localizeText(test.laboratory, language)}</span>
                     </div>
                   )}
 
-                  {translatedNote && (
+                  {(translatedNote || test.notes) && (
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-                      {translatedNote}
+                      {translatedNote || localizeText(test.notes, language)}
                     </p>
                   )}
                 </div>
@@ -1026,20 +1343,20 @@ export const LabTestsView: React.FC = () => {
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <button
                     onClick={() => {
-                      const { key } = cleanBiomarkerName(test.testName, isAr);
+                      const { key } = cleanBiomarkerName(test.testName, language);
                       setSelectedBiomarkerKey(key);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <LineChartIcon className="w-3 h-3" />
-                    <span>{isAr ? 'عرض المنحنى البياني' : 'Voir la courbe'}</span>
+                    <span>{tr(language, 'عرض المنحنى البياني', 'Voir la courbe', 'View Chart')}</span>
                   </button>
 
                   <button
                     onClick={() => deleteLabTest(test.id)}
                     className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 cursor-pointer"
-                    title={isAr ? 'حذف التحليل' : 'Supprimer'}
+                    title={tr(language, 'حذف التحليل', 'Supprimer', 'Delete')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -1057,7 +1374,7 @@ export const LabTestsView: React.FC = () => {
             <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <FlaskConical className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                <span>{isAr ? 'تسجيل نتيجة تحليل مخبري' : 'Ajouter une analyse médicale'}</span>
+                <span>{tr(language, 'تسجيل نتيجة تحليل مخبري', 'Ajouter une analyse médicale', 'Add Lab Test Result')}</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -1070,18 +1387,19 @@ export const LabTestsView: React.FC = () => {
             <form onSubmit={handleCreateLabTest} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'اسم التحليل أو الفحص *' : 'Nom de l’analyse *'}
+                  {tr(language, 'اسم التحليل أو الفحص *', 'Nom de l’analyse *', 'Test / Biomarker Name *')}
                 </label>
                 <input
                   type="text"
                   required
                   value={form.testName}
                   onChange={(e) => setForm({ ...form, testName: e.target.value })}
-                  placeholder={
-                    isAr
-                      ? 'مثال: نسبة السكر في الدم على الريق (Glycémie à jeun)...'
-                      : 'Ex: Glycémie à jeun, Cholestérol Total...'
-                  }
+                  placeholder={tr(
+                    language,
+                    'مثال: نسبة السكر في الدم على الريق (Glycémie à jeun)...',
+                    'Ex: Glycémie à jeun, Cholestérol Total...',
+                    'e.g., Fasting Blood Glucose, Total Cholesterol...'
+                  )}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -1089,24 +1407,24 @@ export const LabTestsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'التصنيف' : 'Catégorie'}
+                    {tr(language, 'التصنيف', 'Catégorie', 'Category')}
                   </label>
                   <select
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value as LabCategory })}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   >
-                    <option value="biochimie">{isAr ? 'كيمياء حيوية (Biochimie)' : 'Biochimie'}</option>
-                    <option value="hematologie">{isAr ? 'أمراض الدم (Hématologie)' : 'Hématologie'}</option>
-                    <option value="hormonologie">{isAr ? 'هرمونات (Hormonologie)' : 'Hormonologie'}</option>
-                    <option value="serologie">{isAr ? 'مصليات ومناعة (Sérologie)' : 'Sérologie'}</option>
-                    <option value="urine">{isAr ? 'تحليل البول (Urines)' : 'Urines'}</option>
+                    <option value="biochimie">{tr(language, 'كيمياء حيوية (Biochimie)', 'Biochimie', 'Biochemistry')}</option>
+                    <option value="hematologie">{tr(language, 'أمراض الدم (Hématologie)', 'Hématologie', 'Hematology (CBC)')}</option>
+                    <option value="hormonologie">{tr(language, 'هرمونات (Hormonologie)', 'Hormonologie', 'Hormonology')}</option>
+                    <option value="serologie">{tr(language, 'مصليات ومناعة (Sérologie)', 'Sérologie', 'Serology')}</option>
+                    <option value="urine">{tr(language, 'تحليل البول (Urines)', 'Urines', 'Urinalysis')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'تاريخ الفحص' : 'Date de prélèvement'}
+                    {tr(language, 'تاريخ الفحص', 'Date de prélèvement', 'Collection Date')}
                   </label>
                   <input
                     type="date"
@@ -1121,7 +1439,7 @@ export const LabTestsView: React.FC = () => {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'القيمة المقاسة *' : 'Valeur mesurée *'}
+                    {tr(language, 'القيمة المقاسة *', 'Valeur mesurée *', 'Measured Value *')}
                   </label>
                   <input
                     type="number"
@@ -1136,7 +1454,7 @@ export const LabTestsView: React.FC = () => {
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الوحدة' : 'Unité'}
+                    {tr(language, 'الوحدة', 'Unité', 'Unit')}
                   </label>
                   <input
                     type="text"
@@ -1149,7 +1467,7 @@ export const LabTestsView: React.FC = () => {
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'المجال المرجعي' : 'Norme (Min - Max)'}
+                    {tr(language, 'المجال المرجعي', 'Norme (Min - Max)', 'Ref. Range (Min - Max)')}
                   </label>
                   <div className="flex items-center gap-1">
                     <input
@@ -1175,25 +1493,25 @@ export const LabTestsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'اسم المخبر' : 'Laboratoire'}
+                    {tr(language, 'اسم المخبر', 'Laboratoire', 'Laboratory')}
                   </label>
                   <input
                     type="text"
                     value={form.laboratory}
                     onChange={(e) => setForm({ ...form, laboratory: e.target.value })}
-                    placeholder={isAr ? 'مخبر ابن رشد، مخبر الأمل...' : 'Laboratoire Ibn Rouchd...'}
+                    placeholder={tr(language, 'مخبر ابن رشد، مخبر الأمل...', 'Laboratoire Ibn Rouchd...', 'Ibn Rouchd Laboratory...')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الطبيب الطالب للفحص' : 'Médecin prescripteur'}
+                    {tr(language, 'الطبيب الطالب للفحص', 'Médecin prescripteur', 'Ordering Physician')}
                   </label>
                   <input
                     type="text"
                     value={form.prescribingDoctor}
                     onChange={(e) => setForm({ ...form, prescribingDoctor: e.target.value })}
-                    placeholder="د. كريم بوجمعة"
+                    placeholder={tr(language, 'د. كريم بوجمعة', 'Dr Karim Boudjemaa', 'Dr. Karim Boudjemaa')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
@@ -1201,17 +1519,18 @@ export const LabTestsView: React.FC = () => {
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'ملاحظات وتفسير الطبيب' : 'Interprétation & Notes'}
+                  {tr(language, 'ملاحظات وتفسير الطبيب', 'Interprétation & Notes', 'Interpretation & Notes')}
                 </label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder={
-                    isAr
-                      ? 'ملاحظات بيولوجية، تعليمات إضافية...'
-                      : 'Remarques cliniques, consignes de surveillance...'
-                  }
+                  placeholder={tr(
+                    language,
+                    'ملاحظات بيولوجية، تعليمات إضافية...',
+                    'Remarques cliniques, consignes de surveillance...',
+                    'Clinical remarks, monitoring notes...'
+                  )}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -1222,13 +1541,13 @@ export const LabTestsView: React.FC = () => {
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
                 >
-                  {isAr ? 'إلغاء' : 'Annuler'}
+                  {tr(language, 'إلغاء', 'Annuler', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-md cursor-pointer"
                 >
-                  {isAr ? 'حفظ النتيجة في الملف' : 'Enregistrer'}
+                  {tr(language, 'حفظ النتيجة في الملف', 'Enregistrer', 'Save Result')}
                 </button>
               </div>
 

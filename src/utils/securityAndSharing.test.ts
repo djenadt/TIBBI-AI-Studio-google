@@ -42,10 +42,13 @@ test('isSharePassExpired accurately calculates expired vs active passes', () => 
   assert.equal(statusExpired.isExpired, true);
   assert.equal(statusExpired.badgeTextAr, 'منتهي الصلاحية');
   assert.equal(statusExpired.badgeTextFr, 'Expiré');
+  assert.equal(statusExpired.badgeTextEn, 'Expired');
 
   const statusActive = getSharePassStatus(future, reference);
   assert.equal(statusActive.isExpired, false);
   assert.equal(statusActive.badgeTextAr, 'نشط وصالح');
+  assert.equal(statusActive.badgeTextFr, 'Actif');
+  assert.equal(statusActive.badgeTextEn, 'Active');
 });
 
 test('Algerian emergency numbers contain official verified lines and disclaim SAMU universality', () => {
@@ -55,6 +58,7 @@ test('Algerian emergency numbers contain official verified lines and disclaim SA
   assert.ok(protCivile);
   assert.equal(protCivile?.number, '14');
   assert.equal(protCivile?.secondaryNumber, '1021');
+  assert.ok(protCivile?.nameEn.length > 0);
 
   const police = VERIFIED_ALGERIAN_HOTLINES.find((h) => h.id === 'police_nationale');
   assert.ok(police);
@@ -75,6 +79,7 @@ test('Guardian access permission enforces legal custody on child records', () =>
     relationship: 'child',
     relationshipLabelAr: 'ابن',
     relationshipLabelFr: 'Enfant',
+    relationshipLabelEn: 'Son',
     gender: 'male',
     birthDate: '2019-03-15',
     bloodGroup: 'A+',
@@ -88,4 +93,5 @@ test('Guardian access permission enforces legal custody on child records', () =>
   assert.equal(perm.hasAccess, true);
   assert.equal(perm.accessType, 'guardian');
   assert.ok(perm.reasonAr.includes('وصاية الولي القانوني'));
+  assert.ok(perm.reasonEn.includes('Minor under authorized legal guardianship'));
 });

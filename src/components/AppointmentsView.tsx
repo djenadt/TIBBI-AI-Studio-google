@@ -13,7 +13,8 @@ import {
   Calendar,
 } from 'lucide-react';
 import { useTibbi } from '../context/TibbiContext';
-import { DoctorAppointment } from '../types/tibbi';
+import { DoctorAppointment, tr } from '../types/tibbi';
+import { localizeText } from '../utils/frTranslator';
 
 export const AppointmentsView: React.FC = () => {
   const {
@@ -53,14 +54,14 @@ export const AppointmentsView: React.FC = () => {
     addAppointment({
       patientId: activeMember.id,
       doctorName: form.doctorName,
-      specialty: form.specialty || (isAr ? 'طب عام' : 'Médecine Générale'),
-      clinicName: form.clinicName || (isAr ? 'العيادة الطبية' : 'Cabinet médical'),
+      specialty: form.specialty || tr(language, 'طب عام', 'Médecine Générale', 'General Medicine'),
+      clinicName: form.clinicName || tr(language, 'العيادة الطبية', 'Cabinet médical', 'Medical Clinic'),
       address: form.address,
       phone: form.phone,
       date: form.date,
       time: form.time,
       status: 'upcoming',
-      reason: form.reason || (isAr ? 'استشارة طبية دورية' : 'Consultation'),
+      reason: form.reason || tr(language, 'استشارة طبية دورية', 'Consultation', 'Medical consultation'),
       notes: form.notes,
     });
 
@@ -86,12 +87,15 @@ export const AppointmentsView: React.FC = () => {
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <CalendarDays className="w-7 h-7 text-rose-600 dark:text-rose-400" />
-            <span>{isAr ? 'المواعيد والزيارات الطبية' : 'Rendez-vous & Consultations'}</span>
+            <span>{tr(language, 'المواعيد والزيارات الطبية', 'Rendez-vous & Consultations', 'Appointments & Consultations')}</span>
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {isAr
-              ? `تنظيم مواعيد وزيارات الطبيب للمريض: ${activeMember.fullNameAr} - التذكيرات، العيادات، وتوثيق التوصيات الطبية.`
-              : `Gestion des consultations médicales de ${activeMember.fullNameFr} - Rappels et comptes-rendus.`}
+            {tr(
+              language,
+              `تنظيم مواعيد وزيارات الطبيب للمريض: ${activeMember.fullNameAr} - التذكيرات، العيادات، وتوثيق التوصيات الطبية.`,
+              `Gestion des consultations médicales de ${activeMember.fullNameFr} - Rappels et comptes-rendus.`,
+              `Manage medical consultations for ${activeMember.fullNameFr} - Reminders, clinics, and visit notes.`
+            )}
           </p>
         </div>
 
@@ -100,7 +104,7 @@ export const AppointmentsView: React.FC = () => {
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-sm transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>{isAr ? '+ حجز موعد جديد' : '+ Nouveau rendez-vous'}</span>
+          <span>{tr(language, '+ حجز موعد جديد', '+ Nouveau rendez-vous', '+ New Appointment')}</span>
         </button>
       </div>
 
@@ -115,7 +119,7 @@ export const AppointmentsView: React.FC = () => {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {isAr ? 'جميع المواعيد' : 'Tous les RDV'}
+            {tr(language, 'جميع المواعيد', 'Tous les RDV', 'All')}
           </button>
           <button
             onClick={() => setFilterStatus('upcoming')}
@@ -125,7 +129,7 @@ export const AppointmentsView: React.FC = () => {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {isAr ? 'المواعيد القادمة' : 'À venir'}
+            {tr(language, 'المواعيد القادمة', 'À venir', 'Upcoming')}
           </button>
           <button
             onClick={() => setFilterStatus('completed')}
@@ -135,11 +139,11 @@ export const AppointmentsView: React.FC = () => {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {isAr ? 'الزيارات المكتملة' : 'Effectués'}
+            {tr(language, 'الزيارات المكتملة', 'Effectués', 'Completed')}
           </button>
         </div>
         <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">
-          {filteredAppointments.length} {isAr ? 'مواعيد' : 'rendez-vous'}
+          {filteredAppointments.length} {tr(language, 'مواعيد', 'rendez-vous', 'appointments')}
         </span>
       </div>
 
@@ -148,7 +152,7 @@ export const AppointmentsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
           <CalendarDays className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {isAr ? 'لا توجد مواعيد مسجلة في هذا القسم.' : 'Aucun rendez-vous dans cette section.'}
+            {tr(language, 'لا توجد مواعيد مسجلة في هذا القسم.', 'Aucun rendez-vous dans cette section.', 'No appointments in this section.')}
           </p>
         </div>
       ) : (
@@ -177,9 +181,9 @@ export const AppointmentsView: React.FC = () => {
                           : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      {isUpcoming ? (isAr ? 'موعد قادم' : 'À venir') : isCompleted ? (isAr ? 'زيارة مكتملة' : 'Effectué') : (isAr ? 'ملغى' : 'Annulé')}
+                      {isUpcoming ? tr(language, 'موعد قادم', 'À venir', 'Upcoming') : isCompleted ? tr(language, 'زيارة مكتملة', 'Effectué', 'Completed') : tr(language, 'ملغى', 'Annulé', 'Cancelled')}
                     </span>
-                    <div className="text-right">
+                    <div className="text-end shrink-0">
                       <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200 block">
                         {apt.date}
                       </span>
@@ -189,22 +193,24 @@ export const AppointmentsView: React.FC = () => {
 
                   <div>
                     <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-base leading-tight">
-                      {apt.doctorName}
+                      {localizeText(apt.doctorName, language)}
                     </h4>
                     <p className="text-xs text-teal-700 dark:text-teal-400 font-semibold mt-0.5">
-                      {apt.specialty}
+                      {localizeText(apt.specialty, language)}
                     </p>
                   </div>
 
                   <p className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/80">
-                    <span className="font-bold text-slate-500 dark:text-slate-400 block mb-0.5">{isAr ? 'سبب الزيارة:' : 'Motif :'}</span>
-                    {apt.reason}
+                    <span className="font-bold text-slate-500 dark:text-slate-400 block mb-0.5">{tr(language, 'سبب الزيارة:', 'Motif :', 'Reason:')}</span>
+                    {localizeText(apt.reason, language)}
                   </p>
 
                   <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{apt.clinicName} {apt.address && `- ${apt.address}`}</span>
+                      <span className="truncate">
+                        {localizeText(apt.clinicName, language)} {apt.address && `- ${localizeText(apt.address, language)}`}
+                      </span>
                     </div>
                     {apt.phone && (
                       <div className="flex items-center gap-1.5 font-mono">
@@ -216,7 +222,7 @@ export const AppointmentsView: React.FC = () => {
 
                   {apt.notes && (
                     <div className="text-[11px] text-slate-600 dark:text-amber-200 bg-amber-50/70 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-100 dark:border-amber-900/50">
-                      📝 {apt.notes}
+                      📝 {localizeText(apt.notes, language)}
                     </div>
                   )}
                 </div>
@@ -228,12 +234,12 @@ export const AppointmentsView: React.FC = () => {
                       className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1 cursor-pointer"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{isAr ? 'توثيق إتمام الزيارة' : 'Valider la visite'}</span>
+                      <span>{tr(language, 'توثيق إتمام الزيارة', 'Valider la visite', 'Mark Completed')}</span>
                     </button>
                   ) : (
                     <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      {isAr ? 'تمت الزيارة وموثقة' : 'Visite enregistrée'}
+                      {tr(language, 'تمت الزيارة وموثقة', 'Visite enregistrée', 'Visit recorded')}
                     </span>
                   )}
 
@@ -242,7 +248,7 @@ export const AppointmentsView: React.FC = () => {
                       onClick={() => updateAppointmentStatus(apt.id, 'cancelled')}
                       className="text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs cursor-pointer"
                     >
-                      {isAr ? 'إلغاء الموعد' : 'Annuler'}
+                      {tr(language, 'إلغاء الموعد', 'Annuler', 'Cancel')}
                     </button>
                   )}
                 </div>
@@ -259,7 +265,7 @@ export const AppointmentsView: React.FC = () => {
             <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <CalendarDays className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                <span>{isAr ? 'تسجيل موعد طبي جديد' : 'Nouveau rendez-vous médical'}</span>
+                <span>{tr(language, 'تسجيل موعد طبي جديد', 'Nouveau rendez-vous médical', 'New Medical Appointment')}</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -273,26 +279,26 @@ export const AppointmentsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'اسم الطبيب *' : 'Nom du médecin *'}
+                    {tr(language, 'اسم الطبيب *', 'Nom du médecin *', 'Doctor Name *')}
                   </label>
                   <input
                     type="text"
                     required
                     value={form.doctorName}
                     onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
-                    placeholder="د. ..."
+                    placeholder={tr(language, 'د. ...', 'Dr ...', 'Dr. ...')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'التخصص الطبي' : 'Spécialité'}
+                    {tr(language, 'التخصص الطبي', 'Spécialité', 'Specialty')}
                   </label>
                   <input
                     type="text"
                     value={form.specialty}
                     onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-                    placeholder="قلب، أطفال، عيون، عام..."
+                    placeholder={tr(language, 'قلب، أطفال، عيون، عام...', 'Cardiologie, pédiatrie, généraliste...', 'Cardiology, pediatrics, general...')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
@@ -301,7 +307,7 @@ export const AppointmentsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'تاريخ الموعد *' : 'Date *'}
+                    {tr(language, 'تاريخ الموعد *', 'Date *', 'Date *')}
                   </label>
                   <input
                     type="date"
@@ -313,7 +319,7 @@ export const AppointmentsView: React.FC = () => {
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الوقت' : 'Heure'}
+                    {tr(language, 'الوقت', 'Heure', 'Time')}
                   </label>
                   <input
                     type="time"
@@ -327,13 +333,13 @@ export const AppointmentsView: React.FC = () => {
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'العيادة أو المستشفى' : 'Cabinet ou Hôpital'}
+                  {tr(language, 'العيادة أو المستشفى', 'Cabinet ou Hôpital', 'Clinic or Hospital')}
                 </label>
                 <input
                   type="text"
                   value={form.clinicName}
                   onChange={(e) => setForm({ ...form, clinicName: e.target.value })}
-                  placeholder="عيادة النور، مستشفى بارني..."
+                  placeholder={tr(language, 'عيادة النور، مستشفى بارني...', 'Clinique Ennour, CHU Parnet...', 'Ennour Clinic, University Hospital...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -341,19 +347,19 @@ export const AppointmentsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'العنوان' : 'Adresse'}
+                    {tr(language, 'العنوان', 'Adresse', 'Address')}
                   </label>
                   <input
                     type="text"
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    placeholder="الشارع، المدينة..."
+                    placeholder={tr(language, 'الشارع، المدينة...', 'Rue, commune, wilaya...', 'Street, city, province...')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'رقم الهاتف' : 'Téléphone'}
+                    {tr(language, 'رقم الهاتف', 'Téléphone', 'Phone')}
                   </label>
                   <input
                     type="text"
@@ -367,26 +373,26 @@ export const AppointmentsView: React.FC = () => {
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'سبب الزيارة أو المراجعة' : 'Motif de consultation'}
+                  {tr(language, 'سبب الزيارة أو المراجعة', 'Motif de consultation', 'Reason for Visit')}
                 </label>
                 <input
                   type="text"
                   value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                  placeholder="متابعة دورية، حمى، ألم ظهر..."
+                  placeholder={tr(language, 'متابعة دورية، حمى، ألم ظهر...', 'Suivi périodique, contrôle bilan...', 'Routine checkup, lab review...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'ملاحظات أو وثائق مطلوبة' : 'Notes ou examens à apporter'}
+                  {tr(language, 'ملاحظات أو وثائق مطلوبة', 'Notes ou examens à apporter', 'Notes or Exams to Bring')}
                 </label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="إحضار التحاليل السابقة، الصيام 12 ساعة..."
+                  placeholder={tr(language, 'إحضار التحاليل السابقة، الصيام 12 ساعة...', 'Apporter les bilans précédents, être à jeun...', 'Bring previous lab results, fast for 12h...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -397,13 +403,13 @@ export const AppointmentsView: React.FC = () => {
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
                 >
-                  {isAr ? 'إلغاء' : 'Annuler'}
+                  {tr(language, 'إلغاء', 'Annuler', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-md cursor-pointer"
                 >
-                  {isAr ? 'حفظ الموعد' : 'Enregistrer'}
+                  {tr(language, 'حفظ الموعد', 'Enregistrer', 'Save Appointment')}
                 </button>
               </div>
 

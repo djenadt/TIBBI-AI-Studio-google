@@ -14,15 +14,18 @@ import { WomenHealthView } from './components/WomenHealthView';
 import { ChildHealthView } from './components/ChildHealthView';
 import { ReportsShareView } from './components/ReportsShareView';
 import { SmartSearchView } from './components/SmartSearchView';
+import { SettingsView } from './components/SettingsView';
 import { EmergencyModal } from './components/EmergencyModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { AuditLogsModal } from './components/AuditLogsModal';
-import { BackButton } from './components/BackButton';
-import { Activity, ShieldCheck, Heart } from 'lucide-react';
+import { Activity, ShieldCheck } from 'lucide-react';
+import { resolveLightBgPreset } from './utils/appearanceSettings';
+import { tr } from './types/tibbi';
 
 const AppContent: React.FC = () => {
-  const { activeTab, language, resetDataToDefaults } = useTibbi();
-  const isAr = language === 'ar';
+  const { activeTab, language, resetDataToDefaults, lightBgTheme } = useTibbi();
+  const [confirmReset, setConfirmReset] = React.useState(false);
+  const lightBgClass = resolveLightBgPreset(lightBgTheme).appBgClass;
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -48,6 +51,8 @@ const AppContent: React.FC = () => {
         return <ChildHealthView />;
       case 'reports_share':
         return <ReportsShareView />;
+      case 'settings':
+        return <SettingsView />;
       case 'search':
         return <SmartSearchView />;
       default:
@@ -56,16 +61,15 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-teal-500 selection:text-white transition-colors">
-      {/* Top Application Header */}
-      <Header />
-
-      {/* Main Navigation (Pill bar on desktop, sticky bottom on mobile) */}
-      <Navigation />
+    <div className={`min-h-screen ${lightBgClass} dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-teal-500 selection:text-white transition-colors`}>
+      {/* Unified Sticky Top Shell (Header + Desktop Navigation) */}
+      <div className="sticky top-0 z-30">
+        <Header />
+        <Navigation />
+      </div>
 
       {/* Main Content Area with bottom clearance for mobile navbar */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-28 lg:pb-12">
-        <BackButton variant="bar" />
         {renderActiveView()}
       </main>
 
@@ -83,31 +87,55 @@ const AppContent: React.FC = () => {
             </div>
             <div>
               <span className="font-extrabold text-slate-800 dark:text-slate-100 text-sm block">
-                TIBBI • الجزائر 🇩🇿
+                {tr(language, 'TIBBI • الجزائر 🇩🇿', 'TIBBI • Algérie 🇩🇿', 'TIBBI • Algeria 🇩🇿')}
               </span>
               <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                {isAr
-                  ? 'المنظومة الرقمية المتكاملة للذاكرة الصحية للأفراد والعائلات الجزائرية'
-                  : 'Plateforme numérique intégrée de santé pour la famille algérienne'}
+                {tr(
+                  language,
+                  'المنظومة الرقمية المتكاملة للذاكرة الصحية للأفراد والعائلات الجزائرية',
+                  'Plateforme numérique intégrée de santé pour la famille algérienne',
+                  'Integrated digital family health record platform'
+                )}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
+            <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-semibold">
               <ShieldCheck className="w-4 h-4" />
-              {isAr ? 'بيانات مشفرة ومحفوظة بأمان' : 'Données sécurisées'}
+              {tr(
+                language,
+                'نسخة تجريبية • حفظ محلي ببيانات محاكاة',
+                'Prototype démo • Stockage local simulé',
+                'Demo Prototype • Local storage with simulated data'
+              )}
             </span>
-            <button
-              onClick={() => {
-                if (window.confirm(isAr ? 'هل تريد استعادة البيانات التجريبية الأصلية؟' : 'Réinitialiser les données ?')) {
-                  resetDataToDefaults();
-                }
-              }}
-              className="text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
-            >
-              {isAr ? 'إعادة ضبط البيانات النموذجية' : 'Réinitialiser la démo'}
-            </button>
+            {confirmReset ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    resetDataToDefaults();
+                    setConfirmReset(false);
+                  }}
+                  className="text-red-600 dark:text-red-400 font-bold hover:underline cursor-pointer"
+                >
+                  {tr(language, 'تأكيد الاستعادة', 'Confirmer', 'Confirm Reset')}
+                </button>
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                >
+                  {tr(language, 'إلغاء', 'Annuler', 'Cancel')}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+              >
+                {tr(language, 'إعادة ضبط البيانات النموذجية', 'Réinitialiser la démo', 'Reset Demo Data')}
+              </button>
+            )}
           </div>
         </div>
       </footer>

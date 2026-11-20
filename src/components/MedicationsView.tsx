@@ -23,13 +23,14 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useTibbi } from '../context/TibbiContext';
-import { Medication, MedicationForm, MedicationScheduleItem } from '../types/tibbi';
+import { Medication, MedicationForm, MedicationScheduleItem, tr } from '../types/tibbi';
 import {
   playMedicationChime,
   requestNotificationPermission,
   getNotificationPermission,
   sendBrowserNotification,
 } from '../utils/medicationAlerts';
+import { localizeText, translateMedicationForm } from '../utils/frTranslator';
 
 export const MedicationsView: React.FC = () => {
   const {
@@ -64,11 +65,13 @@ export const MedicationsView: React.FC = () => {
   const [snoozedUntil, setSnoozedUntil] = useState<number | null>(null);
   const [lastNotifiedDoseId, setLastNotifiedDoseId] = useState<string | null>(null);
 
+  const defaultFrequency = tr(language, 'مرة واحدة يومياً', '1 fois par jour', 'Once daily');
+
   const [form, setForm] = useState({
     name: '',
     dosage: '',
     form: 'tablet' as MedicationForm,
-    frequency: 'مرة واحدة يومياً',
+    frequency: defaultFrequency,
     timingStr: '08:00',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
@@ -134,13 +137,19 @@ export const MedicationsView: React.FC = () => {
             playMedicationChime();
           }
           sendBrowserNotification(
-            isAr
-              ? `تنبيه دواء: موعد جرعة ${sched.medicationName}`
-              : `Rappel Médicament : ${sched.medicationName}`,
+            tr(
+              language,
+              `تنبيه دواء: موعد جرعة ${sched.medicationName}`,
+              `Rappel Médicament : ${sched.medicationName}`,
+              `Medication Reminder: ${sched.medicationName}`
+            ),
             {
-              body: isAr
-                ? `حان الآن موعد تناول ${sched.medicationName} (${sched.dosage}) في تمام ${sched.time}.`
-                : `Il est l'heure de prendre votre dose de ${sched.medicationName} (${sched.dosage}) à ${sched.time}.`,
+              body: tr(
+                language,
+                `حان الآن موعد تناول ${sched.medicationName} (${sched.dosage}) في تمام ${sched.time}.`,
+                `Il est l'heure de prendre votre dose de ${sched.medicationName} (${sched.dosage}) à ${sched.time}.`,
+                `It is time to take ${sched.medicationName} (${localizeText(sched.dosage, 'en')}) at ${sched.time}.`
+              ),
             }
           );
         }
@@ -162,11 +171,14 @@ export const MedicationsView: React.FC = () => {
     setPermissionStatus(res);
     if (res === 'granted') {
       sendBrowserNotification(
-        isAr ? 'تم تفعيل إشعارات TIBBI بنجاح!' : 'Notifications TIBBI activées !',
+        tr(language, 'تم تفعيل إشعارات TIBBI بنجاح!', 'Notifications TIBBI activées !', 'TIBBI notifications enabled!'),
         {
-          body: isAr
-            ? 'ستتلقى تنبيهات دقيقة بمواعيد جرعات الأدوية في وقتها المحدد.'
-            : 'Vous recevrez des alertes précises lors des heures de prises.',
+          body: tr(
+            language,
+            'ستتلقى تنبيهات دقيقة بمواعيد جرعات الأدوية في وقتها المحدد.',
+            'Vous recevrez des alertes précises lors des heures de prises.',
+            'You will receive timely reminders for your scheduled medication doses.'
+          ),
         }
       );
       if (soundEnabled) playMedicationChime();
@@ -179,8 +191,8 @@ export const MedicationsView: React.FC = () => {
       id: 'test_dose',
       patientId: activeMember.id,
       medicationId: 'test_med',
-      medicationName: isAr ? 'Coversyl (Périndopril) 5mg' : 'Coversyl 5mg',
-      dosage: isAr ? 'قرص واحد يومياً' : '1 comprimé par jour',
+      medicationName: tr(language, 'Coversyl (Périndopril) 5mg', 'Coversyl 5mg', 'Coversyl 5mg'),
+      dosage: tr(language, 'قرص واحد يومياً', '1 comprimé par jour', '1 tablet daily'),
       time: '08:00',
       date: new Date().toISOString().split('T')[0],
       status: 'pending',
@@ -197,7 +209,7 @@ export const MedicationsView: React.FC = () => {
       time: targetDose.time,
       instructions:
         relatedMed?.instructions ||
-        (isAr ? 'يؤخذ صباحاً على الريق قبل الفطور مع كأس ماء' : 'À prendre le matin à jeun'),
+        tr(language, 'يؤخذ صباحاً على الريق قبل الفطور مع كأس ماء', 'À prendre le matin à jeun', 'Take in the morning on an empty stomach'),
       isSimulated: true,
     });
 
@@ -206,13 +218,19 @@ export const MedicationsView: React.FC = () => {
     }
 
     sendBrowserNotification(
-      isAr
-        ? `[تجربة] موعد جرعة: ${targetDose.medicationName}`
-        : `[Test] Rappel : ${targetDose.medicationName}`,
+      tr(
+        language,
+        `[تجربة] موعد جرعة: ${targetDose.medicationName}`,
+        `[Test] Rappel : ${targetDose.medicationName}`,
+        `[Test] Reminder: ${targetDose.medicationName}`
+      ),
       {
-        body: isAr
-          ? `حان موعد تناول الدواء (${targetDose.dosage}) - تجربة التنبيه البصري والمسموع.`
-          : `Prise de médicament (${targetDose.dosage}) - test du système d'alerte.`,
+        body: tr(
+          language,
+          `حان موعد تناول الدواء (${targetDose.dosage}) - تجربة التنبيه البصري والمسموع.`,
+          `Prise de médicament (${targetDose.dosage}) - test du système d'alerte.`,
+          `Medication dose (${localizeText(targetDose.dosage, 'en')}) - visual and audio alert test.`
+        ),
       }
     );
   };
@@ -262,7 +280,7 @@ export const MedicationsView: React.FC = () => {
       timing: timings.length > 0 ? timings : ['08:00'],
       startDate: form.startDate,
       endDate: form.endDate || undefined,
-      prescribingDoctor: form.prescribingDoctor || (isAr ? 'طبيب العائلة' : 'Médecin traitant'),
+      prescribingDoctor: form.prescribingDoctor || tr(language, 'طبيب العائلة', 'Médecin traitant', 'Primary Care Physician'),
       prescribingSpecialty: form.prescribingSpecialty,
       condition: form.condition,
       instructions: form.instructions,
@@ -275,7 +293,7 @@ export const MedicationsView: React.FC = () => {
       name: '',
       dosage: '',
       form: 'tablet',
-      frequency: 'مرة واحدة يومياً',
+      frequency: defaultFrequency,
       timingStr: '08:00',
       startDate: new Date().toISOString().split('T')[0],
       endDate: '',
@@ -295,12 +313,15 @@ export const MedicationsView: React.FC = () => {
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Pill className="w-7 h-7 text-amber-500" />
-            <span>{isAr ? 'إدارة الأدوية وتذكيرات العلاج' : 'Gestion des Médicaments & Rappels'}</span>
+            <span>{tr(language, 'إدارة الأدوية وتذكيرات العلاج', 'Gestion des Médicaments & Rappels', 'Medications & Treatment Reminders')}</span>
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {isAr
-              ? `سجل علاجات ${activeMember.fullNameAr} - متابعة الجرعات اليومية، تاريخ العلاجات السابقة، ومواعيد التجديد.`
-              : `Traitements de ${activeMember.fullNameFr} - Prises quotidiennes, historique et renouvellements.`}
+            {tr(
+              language,
+              `سجل علاجات ${activeMember.fullNameAr} - متابعة الجرعات اليومية، تاريخ العلاجات السابقة، ومواعيد التجديد.`,
+              `Traitements de ${activeMember.fullNameFr} - Prises quotidiennes, historique et renouvellements.`,
+              `Treatments for ${activeMember.fullNameFr} - Daily doses, medication history, and renewals.`
+            )}
           </p>
         </div>
 
@@ -309,18 +330,21 @@ export const MedicationsView: React.FC = () => {
           <button
             onClick={handleTestAlert}
             className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold text-xs cursor-pointer shadow-2xs transition-colors"
-            title={isAr ? 'اختبار التنبيه الصوتي والبصري للجرعة' : 'Tester l’alerte visuelle et sonore'}
+            title={tr(language, 'اختبار التنبيه الصوتي والبصري للجرعة', 'Tester l’alerte visuelle et sonore', 'Test visual & audio dose alert')}
           >
             <BellRing className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <span>{isAr ? 'تجربة التنبيه الآن' : 'Tester l’alerte'}</span>
+            <span>{tr(language, 'تجربة التنبيه الآن', 'Tester l’alerte', 'Test Alert')}</span>
           </button>
 
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setForm((prev) => ({ ...prev, frequency: defaultFrequency }));
+              setIsAddModalOpen(true);
+            }}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>{isAr ? '+ تسجيل دواء جديد' : '+ Nouveau médicament'}</span>
+            <span>{tr(language, '+ تسجيل دواء جديد', '+ Nouveau médicament', '+ New Medication')}</span>
           </button>
         </div>
       </div>
@@ -340,16 +364,16 @@ export const MedicationsView: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 text-[11px] font-black uppercase tracking-wider">
-                      {isAr ? 'حان موعد الجرعة الآن !' : 'Dose à prendre maintenant !'}
+                      {tr(language, 'حان موعد الجرعة الآن !', 'Dose à prendre maintenant !', 'Dose Due Now!')}
                     </span>
                     {activeAlertDose.isSimulated && (
                       <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
-                        {isAr ? 'وضع تجريبي' : 'Mode test'}
+                        {tr(language, 'وضع تجريبي', 'Mode test', 'Test mode')}
                       </span>
                     )}
                   </div>
                   <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">
-                    {activeAlertDose.medicationName}
+                    {localizeText(activeAlertDose.medicationName, language)}
                   </h3>
                 </div>
               </div>
@@ -359,17 +383,17 @@ export const MedicationsView: React.FC = () => {
                 <button
                   onClick={() => setSoundEnabled(!soundEnabled)}
                   className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-1.5 text-xs font-bold"
-                  title={soundEnabled ? (isAr ? 'كتم الصوت' : 'Couper le son') : (isAr ? 'تفعيل الصوت' : 'Activer le son')}
+                  title={soundEnabled ? tr(language, 'كتم الصوت', 'Couper le son', 'Mute') : tr(language, 'تفعيل الصوت', 'Activer le son', 'Unmute')}
                 >
                   {soundEnabled ? (
                     <>
                       <Volume2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                      <span>{isAr ? 'صوت التنبيه: مفعّل' : 'Son : Activé'}</span>
+                      <span>{tr(language, 'صوت التنبيه: مفعّل', 'Son : Activé', 'Sound: On')}</span>
                     </>
                   ) : (
                     <>
                       <VolumeX className="w-4 h-4 text-slate-400" />
-                      <span>{isAr ? 'صوت التنبيه: مكتوم' : 'Son : Muet'}</span>
+                      <span>{tr(language, 'صوت التنبيه: مكتوم', 'Son : Muet', 'Sound: Muted')}</span>
                     </>
                   )}
                 </button>
@@ -380,12 +404,12 @@ export const MedicationsView: React.FC = () => {
             <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-500 dark:text-slate-400">{isAr ? 'المقدار والجرعة:' : 'Posologie :'}</span>
-                  <span className="font-extrabold text-slate-900 dark:text-slate-100 font-mono text-sm">{activeAlertDose.dosage}</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">{tr(language, 'المقدار والجرعة:', 'Posologie :', 'Dosage:')}</span>
+                  <span className="font-extrabold text-slate-900 dark:text-slate-100 font-mono text-sm">{localizeText(activeAlertDose.dosage, language)}</span>
                 </div>
                 {activeAlertDose.instructions && (
                   <p className="text-teal-800 dark:text-teal-300 font-medium">
-                    💡 {activeAlertDose.instructions}
+                    💡 {localizeText(activeAlertDose.instructions, language)}
                   </p>
                 )}
               </div>
@@ -402,7 +426,7 @@ export const MedicationsView: React.FC = () => {
                 onClick={handleSkipDose}
                 className="px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs cursor-pointer transition-colors"
               >
-                {isAr ? 'تخطي هذه المرة' : 'Passer'}
+                {tr(language, 'تخطي هذه المرة', 'Passer', 'Skip')}
               </button>
 
               <button
@@ -410,7 +434,7 @@ export const MedicationsView: React.FC = () => {
                 className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
                 <Timer className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <span>{isAr ? 'تذكير بعد 10 دقائق' : 'Rappeler dans 10 min'}</span>
+                <span>{tr(language, 'تذكير بعد 10 دقائق', 'Rappeler dans 10 min', 'Snooze 10 min')}</span>
               </button>
 
               <button
@@ -418,7 +442,7 @@ export const MedicationsView: React.FC = () => {
                 className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-transform hover:scale-[1.02]"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isAr ? '✓ تم التناول الآن' : '✓ Marquer prise'}</span>
+                <span>{tr(language, '✓ تم التناول الآن', '✓ Marquer prise', '✓ Mark Taken')}</span>
               </button>
             </div>
 
@@ -436,20 +460,29 @@ export const MedicationsView: React.FC = () => {
           </div>
           <div>
             <span className="font-extrabold text-slate-800 dark:text-slate-200 block">
-              {isAr ? 'إشعارات المتصفح والتنبيهات المسموعة' : 'Notifications du navigateur & alertes'}
+              {tr(language, 'إشعارات المتصفح والتنبيهات المسموعة', 'Notifications du navigateur & alertes', 'Browser Notifications & Sound Alerts')}
             </span>
             <p className="text-slate-500 dark:text-slate-400 text-[11px]">
               {permissionStatus === 'granted'
-                ? isAr
-                  ? 'إشعارات المتصفح مفعلة - ستتلقى تنبيهاً عند حلول موعد الجرعة حتى وإن كان التطبيق في الخلفية.'
-                  : 'Notifications autorisées - vous recevrez un rappel à l’heure précise même en arrière-plan.'
+                ? tr(
+                    language,
+                    'إشعارات المتصفح مفعلة - ستتلقى تنبيهاً عند حلول موعد الجرعة حتى وإن كان التطبيق في الخلفية.',
+                    'Notifications autorisées - vous recevrez un rappel à l’heure précise même en arrière-plan.',
+                    'Notifications enabled - you will receive timely reminders even in the background.'
+                  )
                 : permissionStatus === 'denied'
-                ? isAr
-                  ? 'تم حظر الإشعارات في إعدادات المتصفح. يرجى السماح بالإشعارات من شريط العنوان لتلقيها.'
-                  : 'Notifications bloquées dans votre navigateur. Activez-les depuis la barre d’adresse.'
-                : isAr
-                ? 'فعل إشعارات المتصفح لتلقي تنبيهات منبثقة بمواعيد الجرعات بدقة.'
-                : 'Activez les notifications pour recevoir les alertes de prises.'}
+                ? tr(
+                    language,
+                    'تم حظر الإشعارات في إعدادات المتصفح. يرجى السماح بالإشعارات من شريط العنوان لتلقيها.',
+                    'Notifications bloquées dans votre navigateur. Activez-les depuis la barre d’adresse.',
+                    'Notifications are blocked in your browser. Enable them from the address bar.'
+                  )
+                : tr(
+                    language,
+                    'فعل إشعارات المتصفح لتلقي تنبيهات منبثقة بمواعيد الجرعات بدقة.',
+                    'Activez les notifications pour recevoir les alertes de prises.',
+                    'Enable browser notifications to receive accurate dose alerts.'
+                  )}
             </p>
           </div>
         </div>
@@ -460,13 +493,13 @@ export const MedicationsView: React.FC = () => {
               onClick={handleEnableNotifications}
               className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold cursor-pointer transition-colors shadow-2xs"
             >
-              {isAr ? 'تفعيل الإشعارات' : 'Activer'}
+              {tr(language, 'تفعيل الإشعارات', 'Activer', 'Enable')}
             </button>
           )}
           {permissionStatus === 'granted' && (
             <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-[11px]">
               <Check className="w-3.5 h-3.5" />
-              <span>{isAr ? 'الإشعارات مفعلة' : 'Activées'}</span>
+              <span>{tr(language, 'الإشعارات مفعلة', 'Activées', 'Enabled')}</span>
             </span>
           )}
         </div>
@@ -480,7 +513,7 @@ export const MedicationsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-teal-600 dark:text-teal-400" />
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
-              {isAr ? 'جدول جرعات اليوم' : 'Planning des prises du jour'}
+              {tr(language, 'جدول جرعات اليوم', 'Planning des prises du jour', "Today's Dose Schedule")}
             </h3>
           </div>
           <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-400">
@@ -490,7 +523,7 @@ export const MedicationsView: React.FC = () => {
 
         {memberSchedule.length === 0 ? (
           <p className="text-xs text-slate-500 dark:text-slate-400 py-3 text-center bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-            {isAr ? 'لا توجد جرعات مجدولة لهذا اليوم.' : 'Aucune prise programmée aujourd’hui.'}
+            {tr(language, 'لا توجد جرعات مجدولة لهذا اليوم.', 'Aucune prise programmée aujourd’hui.', 'No doses scheduled for today.')}
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -514,7 +547,7 @@ export const MedicationsView: React.FC = () => {
                 >
                   {isCurrentAlert && (
                     <span className="absolute -top-2 left-3 px-2 py-0.5 rounded-full bg-amber-500 text-white font-black text-[9px] uppercase shadow-xs">
-                      {isAr ? 'تنبيه موعد' : 'Alerte'}
+                      {tr(language, 'تنبيه موعد', 'Alerte', 'Alert')}
                     </span>
                   )}
 
@@ -525,7 +558,7 @@ export const MedicationsView: React.FC = () => {
                     {isTaken && (
                       <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                         <Check className="w-3 h-3" />
-                        {isAr ? 'أُخذت' : 'Prise'}
+                        {tr(language, 'أُخذت', 'Prise', 'Taken')}
                       </span>
                     )}
                   </div>
@@ -536,9 +569,9 @@ export const MedicationsView: React.FC = () => {
                         isTaken ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'
                       }`}
                     >
-                      {sched.medicationName}
+                      {localizeText(sched.medicationName, language)}
                     </h4>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">{sched.dosage}</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">{localizeText(sched.dosage, language)}</span>
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-700/80 flex items-center justify-between gap-1">
@@ -550,15 +583,15 @@ export const MedicationsView: React.FC = () => {
                           : 'bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800'
                       }`}
                     >
-                      {isTaken ? (isAr ? '✓ تم التناول' : '✓ Validé') : (isAr ? 'تناول الآن' : 'Prendre')}
+                      {isTaken ? tr(language, '✓ تم التناول', '✓ Validé', '✓ Taken') : tr(language, 'تناول الآن', 'Prendre', 'Take Now')}
                     </button>
                     {!isTaken && (
                       <button
                         onClick={() => toggleMedicationScheduleStatus(sched.id, isSkipped ? 'pending' : 'skipped')}
                         className="p-1.5 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs cursor-pointer"
-                        title={isAr ? 'تخطي الجرعة' : 'Passer'}
+                        title={tr(language, 'تخطي الجرعة', 'Passer', 'Skip dose')}
                       >
-                        {isSkipped ? (isAr ? 'تراجع' : 'Annuler') : (isAr ? 'تخطي' : 'Sauter')}
+                        {isSkipped ? tr(language, 'تراجع', 'Annuler', 'Undo') : tr(language, 'تخطي', 'Sauter', 'Skip')}
                       </button>
                     )}
                   </div>
@@ -580,7 +613,7 @@ export const MedicationsView: React.FC = () => {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {isAr ? 'الأدوية الحالية (قيد الاستعمال)' : 'Traitements en cours'}
+            {tr(language, 'الأدوية الحالية (قيد الاستعمال)', 'Traitements en cours', 'Active Treatments')}
           </button>
           <button
             onClick={() => setActiveTabFilter('past')}
@@ -590,7 +623,7 @@ export const MedicationsView: React.FC = () => {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {isAr ? 'سجل الأدوية السابقة والمنتهية' : 'Traitements passés'}
+            {tr(language, 'سجل الأدوية السابقة والمنتهية', 'Traitements passés', 'Past Treatments')}
           </button>
           <button
             onClick={() => setActiveTabFilter('all')}
@@ -600,11 +633,11 @@ export const MedicationsView: React.FC = () => {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {isAr ? 'الكل' : 'Tous'}
+            {tr(language, 'الكل', 'Tous', 'All')}
           </button>
         </div>
         <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">
-          {filteredMeds.length} {isAr ? 'أدوية' : 'médicaments'}
+          {filteredMeds.length} {tr(language, 'أدوية', 'médicaments', 'medications')}
         </span>
       </div>
 
@@ -613,7 +646,7 @@ export const MedicationsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
           <Pill className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {isAr ? 'لا توجد أدوية مسجلة في هذا القسم.' : 'Aucun médicament dans cette catégorie.'}
+            {tr(language, 'لا توجد أدوية مسجلة في هذا القسم.', 'Aucun médicament dans cette catégorie.', 'No medications in this category.')}
           </p>
         </div>
       ) : (
@@ -642,45 +675,45 @@ export const MedicationsView: React.FC = () => {
                           : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      {isActive ? (isAr ? 'قيد الاستعمال' : 'En cours') : isPaused ? (isAr ? 'متوقف مؤقتاً' : 'Suspendu') : (isAr ? 'منتهي' : 'Terminé')}
+                      {isActive ? tr(language, 'قيد الاستعمال', 'En cours', 'Active') : isPaused ? tr(language, 'متوقف مؤقتاً', 'Suspendu', 'Paused') : tr(language, 'منتهي', 'Terminé', 'Completed')}
                     </span>
                     <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
-                      {med.form}
+                      {translateMedicationForm(med.form, language)}
                     </span>
                   </div>
 
                   <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-base leading-tight">
-                    {med.name}
+                    {localizeText(med.name, language)}
                   </h4>
 
                   <div className="text-xs text-amber-900/90 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200/60 dark:border-amber-800/60">
-                    {med.dosage} • {med.frequency}
+                    {localizeText(med.dosage, language)} • {localizeText(med.frequency, language)}
                   </div>
 
                   {med.condition && (
                     <div className="text-xs text-slate-600 dark:text-slate-300">
-                      <span className="font-semibold text-slate-500 dark:text-slate-400">{isAr ? 'الحالة / المرض: ' : 'Indication : '}</span>
-                      {med.condition}
+                      <span className="font-semibold text-slate-500 dark:text-slate-400">{tr(language, 'الحالة / المرض: ', 'Indication : ', 'Condition: ')}</span>
+                      {localizeText(med.condition, language)}
                     </div>
                   )}
 
                   {med.prescribingDoctor && (
                     <div className="text-xs text-teal-800 dark:text-teal-400 font-semibold flex items-center gap-1">
                       <User className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                      <span>{med.prescribingDoctor}</span>
+                      <span>{localizeText(med.prescribingDoctor, language)}</span>
                     </div>
                   )}
 
                   {med.instructions && (
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-                      💡 {med.instructions}
+                      💡 {localizeText(med.instructions, language)}
                     </p>
                   )}
 
                   <div className="text-[11px] text-slate-400 dark:text-slate-400 flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     <span>
-                      {isAr ? 'تاريخ البدء: ' : 'Début : '}
+                      {tr(language, 'تاريخ البدء: ', 'Début : ', 'Start: ')}
                       {med.startDate} {med.endDate && `→ ${med.endDate}`}
                     </span>
                   </div>
@@ -693,14 +726,14 @@ export const MedicationsView: React.FC = () => {
                         onClick={() => toggleMedicationStatus(med.id, 'completed')}
                         className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
                       >
-                        {isAr ? 'تسجيل انتهاء العلاج' : 'Marquer terminé'}
+                        {tr(language, 'تسجيل انتهاء العلاج', 'Marquer terminé', 'Mark Completed')}
                       </button>
                     ) : (
                       <button
                         onClick={() => toggleMedicationStatus(med.id, 'active')}
                         className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 hover:bg-emerald-200 dark:hover:bg-emerald-900/70 text-emerald-800 dark:text-emerald-300 font-bold cursor-pointer"
                       >
-                        {isAr ? 'إعادة التفعيل' : 'Réactiver'}
+                        {tr(language, 'إعادة التفعيل', 'Réactiver', 'Reactivate')}
                       </button>
                     )}
                   </div>
@@ -708,7 +741,7 @@ export const MedicationsView: React.FC = () => {
                   <button
                     onClick={() => deleteMedication(med.id)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 cursor-pointer"
-                    title={isAr ? 'حذف من السجل' : 'Supprimer'}
+                    title={tr(language, 'حذف من السجل', 'Supprimer', 'Delete')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -726,7 +759,7 @@ export const MedicationsView: React.FC = () => {
             <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Pill className="w-5 h-5 text-amber-500" />
-                <span>{isAr ? 'تسجيل دواء أو علاج جديد' : 'Ajouter un médicament'}</span>
+                <span>{tr(language, 'تسجيل دواء أو علاج جديد', 'Ajouter un médicament', 'Add New Medication')}</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -739,14 +772,14 @@ export const MedicationsView: React.FC = () => {
             <form onSubmit={handleCreateMedication} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'اسم الدواء التجاري أو العلمي *' : 'Nom du médicament *'}
+                  {tr(language, 'اسم الدواء التجاري أو العلمي *', 'Nom du médicament *', 'Medication Name *')}
                 </label>
                 <input
                   type="text"
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="مثال: Coversyl 5mg, Doliprane 1000mg..."
+                  placeholder={tr(language, 'مثال: Coversyl 5mg, Doliprane 1000mg...', 'Ex : Coversyl 5mg, Doliprane 1000mg...', 'e.g. Coversyl 5mg, Doliprane 1000mg...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -754,33 +787,33 @@ export const MedicationsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'المقدار / الجرعة' : 'Dosage'}
+                    {tr(language, 'المقدار / الجرعة', 'Dosage', 'Dosage')}
                   </label>
                   <input
                     type="text"
                     required
                     value={form.dosage}
                     onChange={(e) => setForm({ ...form, dosage: e.target.value })}
-                    placeholder="قرص واحد، كبسولة، 5 مل..."
+                    placeholder={tr(language, 'قرص واحد، كبسولة، 5 مل...', '1 comprimé, 1 gélule, 5 ml...', '1 tablet, 1 capsule, 5 ml...')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الشكل الصيدلاني' : 'Forme galénique'}
+                    {tr(language, 'الشكل الصيدلاني', 'Forme galénique', 'Dosage Form')}
                   </label>
                   <select
                     value={form.form}
                     onChange={(e) => setForm({ ...form, form: e.target.value as MedicationForm })}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   >
-                    <option value="tablet">{isAr ? 'أقراص (Comprimé)' : 'Comprimé'}</option>
-                    <option value="capsule">{isAr ? 'كبسولات (Gélule)' : 'Gélule'}</option>
-                    <option value="syrup">{isAr ? 'شراب (Sirop)' : 'Sirop'}</option>
-                    <option value="injection">{isAr ? 'حقن (Injection)' : 'Injection'}</option>
-                    <option value="drops">{isAr ? 'قطرات (Gouttes)' : 'Gouttes'}</option>
-                    <option value="ointment">{isAr ? 'مرهم (Pommade)' : 'Pommade'}</option>
-                    <option value="inhaler">{isAr ? 'بخاخ (Inhalateur)' : 'Inhalateur'}</option>
+                    <option value="tablet">{tr(language, 'أقراص (Comprimé)', 'Comprimé', 'Tablet')}</option>
+                    <option value="capsule">{tr(language, 'كبسولات (Gélule)', 'Gélule', 'Capsule')}</option>
+                    <option value="syrup">{tr(language, 'شراب (Sirop)', 'Sirop', 'Syrup')}</option>
+                    <option value="injection">{tr(language, 'حقن (Injection)', 'Injection', 'Injection')}</option>
+                    <option value="drops">{tr(language, 'قطرات (Gouttes)', 'Gouttes', 'Drops')}</option>
+                    <option value="cream">{tr(language, 'مرهم / كريم (Pommade)', 'Pommade / Crème', 'Cream / Ointment')}</option>
+                    <option value="inhaler">{tr(language, 'بخاخ (Inhalateur)', 'Inhalateur', 'Inhaler')}</option>
                   </select>
                 </div>
               </div>
@@ -788,19 +821,19 @@ export const MedicationsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'التكرار اليومي' : 'Fréquence'}
+                    {tr(language, 'التكرار اليومي', 'Fréquence', 'Frequency')}
                   </label>
                   <input
                     type="text"
                     value={form.frequency}
                     onChange={(e) => setForm({ ...form, frequency: e.target.value })}
-                    placeholder="مرة صباحاً، مرتان يومياً..."
+                    placeholder={tr(language, 'مرة صباحاً، مرتان يومياً...', '1 fois le matin, 2 fois par jour...', 'Once in the morning, twice daily...')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'أوقات التناول (مفصولة بفواصل)' : 'Heures (séparées par virgule)'}
+                    {tr(language, 'أوقات التناول (مفصولة بفواصل)', 'Heures (séparées par virgule)', 'Times (comma-separated)')}
                   </label>
                   <input
                     type="text"
@@ -815,7 +848,7 @@ export const MedicationsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'تاريخ بداية العلاج' : 'Date de début'}
+                    {tr(language, 'تاريخ بداية العلاج', 'Date de début', 'Start Date')}
                   </label>
                   <input
                     type="date"
@@ -827,7 +860,7 @@ export const MedicationsView: React.FC = () => {
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'تاريخ الانتهاء (اختياري)' : 'Date de fin'}
+                    {tr(language, 'تاريخ الانتهاء (اختياري)', 'Date de fin', 'End Date (optional)')}
                   </label>
                   <input
                     type="date"
@@ -840,13 +873,13 @@ export const MedicationsView: React.FC = () => {
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'الحالة أو المرض المرتبط بالعلاج' : 'Indication médicale'}
+                  {tr(language, 'الحالة أو المرض المرتبط بالعلاج', 'Indication médicale', 'Medical Indication')}
                 </label>
                 <input
                   type="text"
                   value={form.condition}
                   onChange={(e) => setForm({ ...form, condition: e.target.value })}
-                  placeholder="ضغط الدم، السكري، دعم الحمل، وقاية..."
+                  placeholder={tr(language, 'ضغط الدم، السكري، دعم الحمل، وقاية...', 'HTA, diabète, grossesse, prévention...', 'Hypertension, diabetes, pregnancy, prevention...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -854,25 +887,25 @@ export const MedicationsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الطبيب الواصف' : 'Médecin prescripteur'}
+                    {tr(language, 'الطبيب الواصف', 'Médecin prescripteur', 'Prescribing Doctor')}
                   </label>
                   <input
                     type="text"
                     value={form.prescribingDoctor}
                     onChange={(e) => setForm({ ...form, prescribingDoctor: e.target.value })}
-                    placeholder="د. كريم بوجمعة"
+                    placeholder={tr(language, 'د. كريم بوجمعة', 'Dr Karim Boudjemaa', 'Dr. Karim Boudjemaa')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'التخصص الطبي' : 'Spécialité'}
+                    {tr(language, 'التخصص الطبي', 'Spécialité', 'Specialty')}
                   </label>
                   <input
                     type="text"
                     value={form.prescribingSpecialty}
                     onChange={(e) => setForm({ ...form, prescribingSpecialty: e.target.value })}
-                    placeholder="أمراض القلب، طب عام..."
+                    placeholder={tr(language, 'أمراض القلب، طب عام...', 'Cardiologie, médecine générale...', 'Cardiology, general medicine...')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
@@ -880,13 +913,13 @@ export const MedicationsView: React.FC = () => {
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'تعليمات وإرشادات الاستعمال' : 'Instructions particulières'}
+                  {tr(language, 'تعليمات وإرشادات الاستعمال', 'Instructions particulières', 'Special Instructions')}
                 </label>
                 <textarea
                   rows={2}
                   value={form.instructions}
                   onChange={(e) => setForm({ ...form, instructions: e.target.value })}
-                  placeholder="قبل الفطور بنصف ساعة، تجنب شرب الشاي مباشرة..."
+                  placeholder={tr(language, 'قبل الفطور بنصف ساعة، تجنب شرب الشاي مباشرة...', 'À jeun 30 min avant le petit-déjeuner...', 'Take 30 min before breakfast...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -897,13 +930,13 @@ export const MedicationsView: React.FC = () => {
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
                 >
-                  {isAr ? 'إلغاء' : 'Annuler'}
+                  {tr(language, 'إلغاء', 'Annuler', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-md cursor-pointer"
                 >
-                  {isAr ? 'حفظ الدواء في الملف' : 'Enregistrer'}
+                  {tr(language, 'حفظ الدواء في الملف', 'Enregistrer', 'Save Medication')}
                 </button>
               </div>
 

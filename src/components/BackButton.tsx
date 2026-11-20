@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { useTibbi } from '../context/TibbiContext';
+import { tr } from '../types/tibbi';
 
 export interface BackButtonProps {
   className?: string;
@@ -22,11 +23,13 @@ export const BackButton: React.FC<BackButtonProps> = ({
   const isAr = language === 'ar';
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
 
-  // Keyboard shortcut: Press Escape to go back if not in dashboard
+  // Keyboard shortcut: Press Escape to go back if not in dashboard (only once via header variant, and never when a modal is open)
   useEffect(() => {
+    if (variant !== 'header') return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && canGoBack) {
-        // Don't trigger if user is typing in an input or textarea or modal is open
+        const hasOpenDialog = Boolean(document.querySelector('[role="dialog"]'));
+        if (hasOpenDialog) return;
         const target = e.target as HTMLElement | null;
         const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
         if (!isInput) {
@@ -38,14 +41,19 @@ export const BackButton: React.FC<BackButtonProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canGoBack, goBack]);
+  }, [variant, canGoBack, goBack]);
 
   if (!canGoBack) {
     return null;
   }
 
-  const labelText = isAr ? 'رجوع' : 'Retour';
-  const tooltipText = isAr ? 'العودة إلى الصفحة السابقة (Esc)' : 'Retour à la page précédente (Esc)';
+  const labelText = tr(language, 'رجوع', 'Retour', 'Back');
+  const tooltipText = tr(
+    language,
+    'العودة إلى الصفحة السابقة (Esc)',
+    'Retour à la page précédente (Esc)',
+    'Go back to previous page (Esc)'
+  );
 
   // 1. Header variant (fits neatly in Top Header)
   if (variant === 'header') {
@@ -79,7 +87,7 @@ export const BackButton: React.FC<BackButtonProps> = ({
           className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-teal-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-teal-800 dark:hover:text-teal-300 border border-slate-200 dark:border-slate-800 shadow-2xs transition-all cursor-pointer text-xs font-bold"
         >
           <BackArrow className="w-4 h-4 text-teal-600 dark:text-teal-400 group-hover:-translate-x-1 rtl:group-hover:translate-x-1 transition-transform" />
-          <span>{isAr ? 'العودة إلى الصفحة السابقة' : 'Retour à la page précédente'}</span>
+          <span>{tr(language, 'العودة إلى الصفحة السابقة', 'Retour à la page précédente', 'Back to previous page')}</span>
         </button>
       </div>
     );

@@ -11,6 +11,8 @@ import {
   Laptop,
 } from 'lucide-react';
 import { useTibbi } from '../context/TibbiContext';
+import { localizeText } from '../utils/frTranslator';
+import { tr } from '../types/tibbi';
 
 export const AuditLogsModal: React.FC = () => {
   const {
@@ -56,7 +58,7 @@ export const AuditLogsModal: React.FC = () => {
       aria-labelledby="audit-logs-title"
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right transition-colors"
+        className={`bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden ${isAr ? 'text-right' : 'text-left'} transition-colors`}
         onClick={(e) => e.stopPropagation()}
         dir={isAr ? 'rtl' : 'ltr'}
       >
@@ -68,12 +70,20 @@ export const AuditLogsModal: React.FC = () => {
             </div>
             <div>
               <h3 id="audit-logs-title" className="text-base sm:text-lg font-black tracking-tight">
-                {isAr ? 'سجل عمليات فتح الملفات ومشاركة البيانات' : 'Journal d’Accès & Audit de Sécurité'}
+                {tr(
+                  language,
+                  'سجل عمليات فتح الملفات ومشاركة البيانات',
+                  'Journal d’Accès & Audit de Sécurité',
+                  'Access History & Security Audit Log'
+                )}
               </h3>
               <p className="text-xs text-slate-300">
-                {isAr
-                  ? 'سجل غير قابل للتعديل يوثق جميع عمليات استعراض السجلات وإظهار المعرفات ومشاركة الروابط'
-                  : 'Historique traçable de toutes les consultations, démasquages et partages'}
+                {tr(
+                  language,
+                  'سجل غير قابل للتعديل يوثق جميع عمليات استعراض السجلات وإظهار المعرفات ومشاركة الروابط',
+                  'Historique traçable de toutes les consultations, démasquages et partages',
+                  'Immutable log recording all record views, ID unmasking, and link sharing'
+                )}
               </p>
             </div>
           </div>
@@ -81,7 +91,7 @@ export const AuditLogsModal: React.FC = () => {
           <button
             onClick={() => setIsAuditLogsModalOpen(false)}
             className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/15 cursor-pointer transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label={isAr ? 'إغلاق سجل الوصول' : 'Fermer'}
+            aria-label={tr(language, 'إغلاق سجل الوصول', 'Fermer', 'Close audit logs')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -91,9 +101,12 @@ export const AuditLogsModal: React.FC = () => {
         <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-900/60 text-xs text-emerald-900 dark:text-emerald-300 flex items-center gap-2 shrink-0">
           <Lock className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
           <p className="leading-relaxed">
-            {isAr
-              ? 'مبدأ الشفافية والوصاية: بيانات الأطفال والقصر لا تُعرض إلا للممثل والولي القانوني المعتمد، وتُسجّل كل عملية اطلاع لحماية خصوصية الأسرة.'
-              : 'Conformité stricte : Seuls les tuteurs légaux peuvent consulter les dossiers pédiatriques.'}
+            {tr(
+              language,
+              'مبدأ الشفافية والوصاية: بيانات الأطفال والقصر لا تُعرض إلا للممثل والولي القانوني المعتمد، وتُسجّل كل عملية اطلاع لحماية خصوصية الأسرة.',
+              'Conformité stricte : Seuls les tuteurs légaux peuvent consulter les dossiers pédiatriques.',
+              'Strict privacy & guardianship: minor records are accessible only to authorized legal guardians, and every view is logged.'
+            )}
           </p>
         </div>
 
@@ -103,14 +116,13 @@ export const AuditLogsModal: React.FC = () => {
             <div className="text-center py-10 space-y-2">
               <ShieldCheck className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
               <p className="font-bold text-slate-600 dark:text-slate-300">
-                {isAr ? 'لا توجد عمليات مسجلة حتى الآن' : 'Aucun journal d’accès'}
+                {tr(language, 'لا توجد عمليات مسجلة حتى الآن', 'Aucun journal d’accès', 'No access logs recorded yet')}
               </p>
             </div>
           ) : (
             accessLogs.map((log) => {
               const isShare = log.action === 'create_share_pass';
               const isUnmask = log.action === 'unmask_id';
-              const isView = log.action === 'view_profile' || log.action === 'view_document';
 
               return (
                 <div
@@ -138,17 +150,27 @@ export const AuditLogsModal: React.FC = () => {
                       </div>
                       <div>
                         <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-xs">
-                          {isAr ? log.actionLabelAr : log.actionLabelFr}
+                          {tr(
+                            language,
+                            log.actionLabelAr,
+                            log.actionLabelFr,
+                            log.actionLabelEn || localizeText(log.actionLabelAr, 'en')
+                          )}
                         </h4>
                         <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {isAr ? `المعني: ${log.targetMemberName}` : `Cible : ${log.targetMemberName}`}
+                          {tr(
+                            language,
+                            `المعني: ${log.targetMemberName}`,
+                            `Cible : ${localizeText(log.targetMemberName, language)}`,
+                            `Target: ${localizeText(log.targetMemberName, language)}`
+                          )}
                         </span>
                       </div>
                     </div>
 
                     <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {new Date(log.timestamp).toLocaleString(isAr ? 'ar-DZ' : 'fr-FR', {
+                      {new Date(log.timestamp).toLocaleString(tr(language, 'ar-DZ', 'fr-FR', 'en-GB'), {
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
@@ -159,17 +181,24 @@ export const AuditLogsModal: React.FC = () => {
 
                   {log.details && (
                     <p className="text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px]">
-                      {log.details}
+                      {localizeText(log.details, language)}
                     </p>
                   )}
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
                     <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {isAr ? `المستخدم: ${log.actorName}` : `Opéré par: ${log.actorName}`}
+                      {tr(
+                        language,
+                        `المستخدم: ${log.actorName}`,
+                        `Opéré par : ${localizeText(log.actorName, language)}`,
+                        `Actor: ${localizeText(log.actorName, language)}`
+                      )}
                     </span>
                     <span className="flex items-center gap-1 font-mono">
                       <Laptop className="w-3 h-3" />
-                      {log.ipOrDevice || 'جلسة محلية'}
+                      {log.ipOrDevice
+                        ? localizeText(log.ipOrDevice, language)
+                        : tr(language, 'جلسة محلية', 'Session locale', 'Local session')}
                     </span>
                   </div>
                 </div>
@@ -181,13 +210,18 @@ export const AuditLogsModal: React.FC = () => {
         {/* Footer */}
         <div className="p-3 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 shrink-0 flex items-center justify-between text-xs">
           <span className="text-[10px] text-slate-400 font-mono">
-            TIBBI Security Audit Log • الجزائر 🇩🇿
+            {tr(
+              language,
+              'TIBBI Security Audit Log • الجزائر 🇩🇿',
+              'TIBBI Security Audit Log • Algérie 🇩🇿',
+              'TIBBI Security Audit Log • Algeria 🇩🇿'
+            )}
           </span>
           <button
             onClick={() => setIsAuditLogsModalOpen(false)}
             className="px-4 py-2 rounded-xl bg-slate-800 dark:bg-slate-700 text-white font-bold text-xs hover:bg-slate-900 cursor-pointer min-h-[40px]"
           >
-            {isAr ? 'إغلاق السجل' : 'Fermer'}
+            {tr(language, 'إغلاق السجل', 'Fermer', 'Close Log')}
           </button>
         </div>
       </div>

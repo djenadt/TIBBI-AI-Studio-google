@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { useTibbi } from '../context/TibbiContext';
+import { tr } from '../types/tibbi';
 
 export interface ThemeToggleProps {
   className?: string;
@@ -53,21 +54,23 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     }
   };
 
-  const currentModeLabel = isAr
-    ? isDark
-      ? 'الوضع الداكن'
-      : 'الوضع الفاتح'
-    : isDark
-    ? 'Mode Sombre'
-    : 'Mode Clair';
+  const currentModeLabel = isDark
+    ? tr(language, 'الوضع الداكن', 'Mode Sombre', 'Dark Mode')
+    : tr(language, 'الوضع الفاتح', 'Mode Clair', 'Light Mode');
 
-  const toggleActionLabel = isAr
-    ? isDark
-      ? 'التبديل إلى الوضع الفاتح (Light Mode)'
-      : 'التبديل إلى الوضع الداكن (Dark Mode)'
-    : isDark
-    ? 'Passer au mode clair'
-    : 'Passer au mode sombre (Dark Mode)';
+  const toggleActionLabel = isDark
+    ? tr(
+        language,
+        'التبديل إلى الوضع الفاتح (Light Mode)',
+        'Passer au mode clair',
+        'Switch to Light Mode'
+      )
+    : tr(
+        language,
+        'التبديل إلى الوضع الداكن (Dark Mode)',
+        'Passer au mode sombre (Dark Mode)',
+        'Switch to Dark Mode'
+      );
 
   // 1. True Interactive Toggle Switch Variant (Default)
   if (variant === 'switch') {
@@ -169,12 +172,12 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       onKeyDown={handleKeyDown}
       title={toggleActionLabel}
       aria-label={toggleActionLabel}
-      className={`p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-amber-300 hover:text-teal-700 dark:hover:text-amber-200 hover:border-teal-300 dark:hover:border-slate-600 shadow-2xs transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-teal-500/50 ${className}`}
+      className={`p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-amber-300 hover:text-teal-700 dark:hover:text-amber-200 hover:border-teal-300 dark:hover:border-slate-600 shadow-2xs transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-teal-500/50 shrink-0 ${className}`}
     >
       {isDark ? (
-        <Sun className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-400" />
+        <Sun className="w-4 h-4 text-amber-400" />
       ) : (
-        <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-slate-700" />
+        <Moon className="w-4 h-4 text-slate-700" />
       )}
       <span className="sr-only">{currentModeLabel}</span>
     </button>

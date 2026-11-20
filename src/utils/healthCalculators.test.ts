@@ -6,9 +6,13 @@ import {
   calculatePregnancyWeek,
   calculateDueDate,
   calculateFertileWindow,
+  getDayCyclePhase,
+  buildCycleCalendarMonth,
   evaluateLabValue,
   getVaccineDueSummary,
   ALGERIAN_PEV_SCHEDULE,
+  formatChartNumericLabel,
+  resolveChartClickVitalId,
 } from './healthCalculators';
 
 test('BMI calculation and category mapping', () => {
@@ -47,6 +51,35 @@ test('Fertile window and ovulation estimation', () => {
   assert.equal(window.ovulationDate, '2026-05-15');
 });
 
+test('Cycle calendar phase classification colors period (red), fertile/ovulation (green), and normal days accurately', () => {
+  const anchor = '2026-11-01';
+  // Day 1 & Day 5 -> period
+  assert.equal(getDayCyclePhase('2026-11-01', anchor, 28, 5).phase, 'period');
+  assert.equal(getDayCyclePhase('2026-11-05', anchor, 28, 5).phase, 'period');
+  // Day 7 -> normal follicular
+  assert.equal(getDayCyclePhase('2026-11-07', anchor, 28, 5).phase, 'normal');
+  // Day 11..16 -> fertile (green), Day 15 (2026-11-15) -> peak ovulation
+  assert.equal(getDayCyclePhase('2026-11-11', anchor, 28, 5).phase, 'fertile');
+  const peak = getDayCyclePhase('2026-11-15', anchor, 28, 5);
+  assert.equal(peak.phase, 'fertile');
+  assert.equal(peak.isOvulationDay, true);
+  // Day 20 -> normal luteal
+  assert.equal(getDayCyclePhase('2026-11-20', anchor, 28, 5).phase, 'normal');
+  // Next cycle projection in December (2026-11-29 is next period day 1)
+  assert.equal(getDayCyclePhase('2026-12-01', anchor, 28, 5).phase, 'period');
+
+  // Calendar grid for November 2026 (monthIndex = 10)
+  const cells = buildCycleCalendarMonth(2026, 10, anchor, 28, 5);
+  const novCells = cells.filter((c) => c.inCurrentMonth);
+  assert.equal(novCells.length, 30);
+  const periodCount = novCells.filter((c) => c.phase === 'period').length;
+  const fertileCount = novCells.filter((c) => c.phase === 'fertile').length;
+  const normalCount = novCells.filter((c) => c.phase === 'normal').length;
+  assert.equal(periodCount, 7); // Nov 1-5 + Nov 29-30
+  assert.equal(fertileCount, 6); // Nov 11-16
+  assert.equal(normalCount, 17); // 30 - 7 - 6
+});
+
 test('Lab test range evaluation', () => {
   // Normal value: 0.95 g/L with range 0.70 - 1.10
   const normal = evaluateLabValue(0.95, 0.70, 1.10);
@@ -74,3 +107,41 @@ test('Algerian PEV vaccination summary', () => {
   assert.equal(summary.totalDue, 3);
   assert.ok(summary.upcomingOrOverdue.length > 0);
 });
+
+test('Chart numeric label formatter outputs only extracted numbers without units', () => {
+  assert.equal(formatChartNumericLabel(124), '124');
+  assert.equal(formatChartNumericLabel(0.96), '0.96');
+  assert.equal(formatChartNumericLabel(78.5), '78.5');
+  assert.equal(formatChartNumericLabel('124 mmHg'), '124');
+  assert.equal(formatChartNumericLabel('0.98 g/L'), '0.98');
+  assert.equal(formatChartNumericLabel(null), '');
+  assert.equal(formatChartNumericLabel(undefined), '');
+  assert.equal(formatChartNumericLabel(NaN), '');
+});
+
+test('Chart click vital resolver resolves clicked point ID from payload, index, or label', () => {
+  const sample = [
+    { id: 'vit_1', date: '06-12' },
+    { id: 'vit_2', date: '07-15' },
+    { id: 'vit_3', date: '11-04' },
+  ];
+
+  assert.equal(
+    resolveChartClickVitalId(sample, { activePayload: [{ payload: { id: 'vit_2' } }] }),
+    'vit_2'
+  );
+  assert.equal(
+    resolveChartClickVitalId(sample, { activeTooltipIndex: 2 }),
+    'vit_3'
+  );
+  assert.equal(
+    resolveChartClickVitalId(sample, { activeTooltipIndex: '0' }),
+    'vit_1'
+  );
+  assert.equal(
+    resolveChartClickVitalId(sample, { activeLabel: '07-15' }),
+    'vit_2'
+  );
+  assert.equal(resolveChartClickVitalId(sample, null), null);
+});
+

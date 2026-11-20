@@ -18,8 +18,9 @@ import {
   Lock,
 } from 'lucide-react';
 import { useTibbi } from '../context/TibbiContext';
-import { FamilyMember, BloodGroup, FamilyRelationship } from '../types/tibbi';
+import { FamilyMember, BloodGroup, FamilyRelationship, tr } from '../types/tibbi';
 import { maskIdentityNumber, checkMemberAccessPermission } from '../utils/securityAndSharing';
+import { localizeText, localizeList } from '../utils/frTranslator';
 
 export const FamilyView: React.FC = () => {
   const {
@@ -36,6 +37,13 @@ export const FamilyView: React.FC = () => {
 
   const isAr = language === 'ar';
 
+  const defaultGuardian = tr(
+    language,
+    'أمين ومريم مزيان (رعاية مشتركة)',
+    'Amine et Meriem Meziane (Garde conjointe)',
+    'Amine and Meriem Meziane (Joint custody)'
+  );
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullNameAr: '',
@@ -43,6 +51,7 @@ export const FamilyView: React.FC = () => {
     relationship: 'child' as FamilyRelationship,
     relationshipLabelAr: 'ابن / ابنة',
     relationshipLabelFr: 'Enfant',
+    relationshipLabelEn: 'Child',
     gender: 'male' as 'male' | 'female',
     birthDate: '2020-01-01',
     bloodGroup: 'O+' as BloodGroup,
@@ -51,20 +60,23 @@ export const FamilyView: React.FC = () => {
     allergies: '',
     chronicDiseases: '',
     surgeries: '',
-    legalGuardian: 'أمين ومريم مزيان (رعاية مشتركة)',
+    legalGuardian: defaultGuardian,
     notes: '',
   });
 
   const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullNameAr.trim()) return;
+    const resolvedNameAr = formData.fullNameAr.trim() || formData.fullNameFr.trim();
+    const resolvedNameFr = formData.fullNameFr.trim() || formData.fullNameAr.trim();
+    if (!resolvedNameAr) return;
 
     addFamilyMember({
-      fullNameAr: formData.fullNameAr,
-      fullNameFr: formData.fullNameFr || formData.fullNameAr,
+      fullNameAr: resolvedNameAr,
+      fullNameFr: resolvedNameFr,
       relationship: formData.relationship,
       relationshipLabelAr: formData.relationshipLabelAr,
       relationshipLabelFr: formData.relationshipLabelFr,
+      relationshipLabelEn: formData.relationshipLabelEn,
       gender: formData.gender,
       birthDate: formData.birthDate,
       bloodGroup: formData.bloodGroup,
@@ -85,6 +97,7 @@ export const FamilyView: React.FC = () => {
       relationship: 'child',
       relationshipLabelAr: 'ابن / ابنة',
       relationshipLabelFr: 'Enfant',
+      relationshipLabelEn: 'Child',
       gender: 'male',
       birthDate: '2020-01-01',
       bloodGroup: 'O+',
@@ -93,7 +106,7 @@ export const FamilyView: React.FC = () => {
       allergies: '',
       chronicDiseases: '',
       surgeries: '',
-      legalGuardian: 'أمين ومريم مزيان',
+      legalGuardian: defaultGuardian,
       notes: '',
     });
   };
@@ -103,10 +116,10 @@ export const FamilyView: React.FC = () => {
     const now = new Date();
     const diffMonths = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
     if (diffMonths < 24) {
-      return isAr ? `${diffMonths} شهراً` : `${diffMonths} mois`;
+      return tr(language, `${diffMonths} شهراً`, `${diffMonths} mois`, `${diffMonths} months`);
     }
     const years = Math.floor(diffMonths / 12);
-    return isAr ? `${years} سنة` : `${years} ans`;
+    return tr(language, `${years} سنة`, `${years} ans`, `${years} yrs`);
   };
 
   return (
@@ -117,30 +130,36 @@ export const FamilyView: React.FC = () => {
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Users className="w-7 h-7 text-teal-600 dark:text-teal-400" />
-            <span>{isAr ? 'إدارة الأسرة والملفات الصحية العائلية' : 'Gestion de la Famille & Dossiers'}</span>
+            <span>{tr(language, 'إدارة الأسرة والملفات الصحية العائلية', 'Gestion de la Famille & Dossiers', 'Family Management & Health Records')}</span>
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {isAr
-              ? 'لكل فرد من أفراد الأسرة ملف صحي مستقل ومستمر طوال الحياة، مع إدارة الصلاحيات والوصاية القانونية.'
-              : 'Dossier de santé continu et sécurisé pour chaque membre de la famille avec gestion des tuteurs.'}
+            {tr(
+              language,
+              'لكل فرد من أفراد الأسرة ملف صحي مستقل ومستمر طوال الحياة، مع إدارة الصلاحيات والوصاية القانونية.',
+              'Dossier de santé continu et sécurisé pour chaque membre de la famille avec gestion des tuteurs.',
+              'Lifelong, secure health record for every family member with guardian and access controls.'
+            )}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setIsAuditLogsModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs transition-all cursor-pointer"
           >
             <FileCheck2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>{isAr ? 'سجل العمليات والوصول' : "Registre d'accès"}</span>
+            <span>{tr(language, 'سجل العمليات والوصول', "Registre d'accès", 'Access Log')}</span>
           </button>
 
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setFormData((prev) => ({ ...prev, legalGuardian: defaultGuardian }));
+              setIsAddModalOpen(true);
+            }}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white font-bold text-sm shadow-sm transition-all cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            <span>{isAr ? '+ إضافة فرد جديد للأسرة' : '+ Ajouter un membre'}</span>
+            <span>{tr(language, '+ إضافة فرد جديد للأسرة', '+ Ajouter un membre', '+ Add Family Member')}</span>
           </button>
         </div>
       </div>
@@ -169,7 +188,7 @@ export const FamilyView: React.FC = () => {
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                     }`}
                   >
-                    {member.fullNameAr.charAt(0)}
+                    {isAr ? member.fullNameAr.charAt(0) : member.fullNameFr.charAt(0)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -178,18 +197,18 @@ export const FamilyView: React.FC = () => {
                       </h3>
                       {isActive && (
                         <span className="px-2 py-0.5 rounded-md bg-teal-600 dark:bg-teal-500 text-white text-[11px] font-bold">
-                          {isAr ? 'الملف النشط' : 'Actif'}
+                          {tr(language, 'الملف النشط', 'Actif', 'Active')}
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {isAr ? member.relationshipLabelAr : member.relationshipLabelFr} • {ageStr} • {member.birthDate}
+                      {tr(language, member.relationshipLabelAr, member.relationshipLabelFr, member.relationshipLabelEn || localizeText(member.relationshipLabelFr, 'en'))} • {ageStr} • {member.birthDate}
                     </p>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span className="inline-block px-2.5 py-1 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-900 dark:text-teal-300 border border-transparent dark:border-teal-800/60 font-mono font-black text-sm">
+                <div className="text-end shrink-0">
+                  <span dir="ltr" className="inline-block px-2.5 py-1 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-900 dark:text-teal-300 border border-transparent dark:border-teal-800/60 font-mono font-black text-sm">
                     {member.bloodGroup}
                   </span>
                 </div>
@@ -201,17 +220,17 @@ export const FamilyView: React.FC = () => {
                 {/* Chronic conditions */}
                 <div className="flex items-start gap-2">
                   <span className="text-slate-500 dark:text-slate-400 font-semibold shrink-0">
-                    {isAr ? 'الحالات المزمنة:' : 'Maladies chroniques:'}
+                    {tr(language, 'الحالات المزمنة:', 'Maladies chroniques:', 'Chronic conditions:')}
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {member.chronicDiseases.length > 0 ? (
-                      member.chronicDiseases.map((cond, i) => (
+                      localizeList(member.chronicDiseases, language).map((cond, i) => (
                         <span key={i} className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-medium">
                           {cond}
                         </span>
                       ))
                     ) : (
-                      <span className="text-slate-400 dark:text-slate-500">{isAr ? 'لا توجد' : 'Aucune'}</span>
+                      <span className="text-slate-400 dark:text-slate-500">{tr(language, 'لا توجد', 'Aucune', 'None')}</span>
                     )}
                   </div>
                 </div>
@@ -219,17 +238,17 @@ export const FamilyView: React.FC = () => {
                 {/* Allergies */}
                 <div className="flex items-start gap-2">
                   <span className="text-slate-500 dark:text-slate-400 font-semibold shrink-0">
-                    {isAr ? 'الحساسية:' : 'Allergies:'}
+                    {tr(language, 'الحساسية:', 'Allergies:', 'Allergies:')}
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {member.allergies.length > 0 ? (
-                      member.allergies.map((allg, i) => (
+                      localizeList(member.allergies, language).map((allg, i) => (
                         <span key={i} className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-rose-950/50 text-red-700 dark:text-rose-300 border border-red-200 dark:border-rose-800/60 font-medium">
                           {allg}
                         </span>
                       ))
                     ) : (
-                      <span className="text-slate-400 dark:text-slate-500">{isAr ? 'لا توجد' : 'Aucune'}</span>
+                      <span className="text-slate-400 dark:text-slate-500">{tr(language, 'لا توجد', 'Aucune', 'None')}</span>
                     )}
                   </div>
                 </div>
@@ -247,13 +266,13 @@ export const FamilyView: React.FC = () => {
                       <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-[11px]">
                         <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
                           <Lock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                          <span>{isAr ? 'صلاحية الوصول:' : 'Droit d\'accès :'}</span>
+                          <span>{tr(language, 'صلاحية الوصول:', "Droit d'accès :", 'Access rights:')}</span>
                           <span className={isOwner ? 'text-teal-700 dark:text-teal-400' : 'text-indigo-700 dark:text-indigo-400'}>
-                            {isAr ? perm.reasonAr : perm.reasonFr}
+                            {tr(language, perm.reasonAr, perm.reasonFr, perm.reasonEn)}
                           </span>
                         </div>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-medium">
-                          {isOwner ? (isAr ? 'المالك' : 'Titulaire') : (isAr ? 'وصاية / قرابة' : 'Tuteur')}
+                          {isOwner ? tr(language, 'المالك', 'Titulaire', 'Owner') : tr(language, 'وصاية / قرابة', 'Tuteur', 'Guardian')}
                         </span>
                       </div>
 
@@ -261,8 +280,8 @@ export const FamilyView: React.FC = () => {
                       {member.legalGuardian && (
                         <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 bg-emerald-50/60 dark:bg-emerald-950/30 p-2 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 text-[11px]">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="font-bold text-emerald-800 dark:text-emerald-300">{isAr ? 'الوصي القانوني:' : 'Tuteur légal :'}</span>
-                          <span className="text-emerald-900 dark:text-emerald-200 truncate">{member.legalGuardian}</span>
+                          <span className="font-bold text-emerald-800 dark:text-emerald-300">{tr(language, 'الوصي القانوني:', 'Tuteur légal :', 'Legal guardian:')}</span>
+                          <span className="text-emerald-900 dark:text-emerald-200 truncate">{localizeText(member.legalGuardian, language)}</span>
                         </div>
                       )}
 
@@ -270,8 +289,8 @@ export const FamilyView: React.FC = () => {
                       {member.nationalIdOrChifa && (
                         <div className="flex items-center justify-between p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/70 text-[11px]">
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 font-semibold">{isAr ? 'بطاقة الشفاء:' : 'N° Chifa :'}</span>
-                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wider">
+                            <span className="text-slate-500 dark:text-slate-400 font-semibold">{tr(language, 'بطاقة الشفاء:', 'N° Chifa :', 'Chifa No.:')}</span>
+                            <span dir="ltr" className="font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wider inline-block">
                               {maskedChifa}
                             </span>
                           </div>
@@ -279,10 +298,10 @@ export const FamilyView: React.FC = () => {
                             type="button"
                             onClick={() => toggleMaskId(member.id)}
                             className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer flex items-center gap-1 text-[10px] font-bold"
-                            title={isUnmasked ? (isAr ? 'إخفاء الرقم' : 'Masquer') : (isAr ? 'إظهار الرقم الكامل' : 'Afficher')}
+                            title={isUnmasked ? tr(language, 'إخفاء الرقم', 'Masquer', 'Hide number') : tr(language, 'إظهار الرقم الكامل', 'Afficher', 'Show full number')}
                           >
                             {isUnmasked ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            <span>{isUnmasked ? (isAr ? 'إخفاء' : 'Masquer') : (isAr ? 'إظهار' : 'Afficher')}</span>
+                            <span>{isUnmasked ? tr(language, 'إخفاء', 'Masquer', 'Hide') : tr(language, 'إظهار', 'Afficher', 'Show')}</span>
                           </button>
                         </div>
                       )}
@@ -301,19 +320,19 @@ export const FamilyView: React.FC = () => {
                     }}
                     className="w-full py-2 rounded-xl bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
                   >
-                    {isAr ? 'التبديل إلى هذا الملف الصحي' : 'Basculer sur ce dossier'}
+                    {tr(language, 'التبديل إلى هذا الملف الصحي', 'Basculer sur ce dossier', 'Switch to this record')}
                   </button>
                 ) : (
                   <div className="w-full flex items-center justify-between text-xs text-teal-800 dark:text-teal-300 font-bold">
                     <span className="flex items-center gap-1">
                       <CheckCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                      {isAr ? 'الملف الحالي قيد الاستعراض' : 'Dossier en cours'}
+                      {tr(language, 'الملف الحالي قيد الاستعراض', 'Dossier en cours', 'Currently active record')}
                     </span>
                     <button
                       onClick={() => setActiveTab('timeline')}
                       className="text-teal-700 dark:text-teal-400 hover:underline cursor-pointer"
                     >
-                      {isAr ? 'استعراض التاريخ الطبي ←' : 'Historique complet →'}
+                      {tr(language, 'استعراض التاريخ الطبي ←', 'Historique complet →', 'Full medical history →')}
                     </button>
                   </div>
                 )}
@@ -330,7 +349,7 @@ export const FamilyView: React.FC = () => {
             <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                <span>{isAr ? 'إضافة فرد جديد للأسرة' : 'Nouveau membre de la famille'}</span>
+                <span>{tr(language, 'إضافة فرد جديد للأسرة', 'Nouveau membre de la famille', 'Add Family Member')}</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -345,26 +364,27 @@ export const FamilyView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الاسم واللقب (بالعربية) *' : 'Nom complet (Arabe) *'}
+                    {tr(language, 'الاسم واللقب (بالعربية) *', 'Nom complet (Arabe)', 'Full Name (Arabic)')}
                   </label>
                   <input
                     type="text"
-                    required
+                    required={isAr}
                     value={formData.fullNameAr}
                     onChange={(e) => setFormData({ ...formData, fullNameAr: e.target.value })}
-                    placeholder="مثال: سارة مزيان"
+                    placeholder={tr(language, 'مثال: سارة مزيان', 'Ex : سارة مزيان (optionnel)', 'e.g. سارة مزيان (optional)')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500 focus:outline-hidden"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الاسم بالفرنسية' : 'Nom en Français'}
+                    {tr(language, 'الاسم بالفرنسية', 'Nom complet (Français) *', 'Full Name (Latin script) *')}
                   </label>
                   <input
                     type="text"
+                    required={!isAr}
                     value={formData.fullNameFr}
                     onChange={(e) => setFormData({ ...formData, fullNameFr: e.target.value })}
-                    placeholder="Ex: Sarah Meziane"
+                    placeholder={tr(language, 'مثال: Sarah Meziane', 'Ex: Sarah Meziane', 'e.g. Sarah Meziane')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500 focus:outline-hidden"
                   />
                 </div>
@@ -373,7 +393,7 @@ export const FamilyView: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'صلة القرابة' : 'Lien familial'}
+                    {tr(language, 'صلة القرابة', 'Lien familial', 'Relationship')}
                   </label>
                   <select
                     value={formData.relationship}
@@ -381,23 +401,25 @@ export const FamilyView: React.FC = () => {
                       const val = e.target.value as FamilyRelationship;
                       let labelAr = 'ابن / ابنة';
                       let labelFr = 'Enfant';
-                      if (val === 'spouse') { labelAr = 'زوج / زوجة'; labelFr = 'Conjoint(e)'; }
-                      if (val === 'parent') { labelAr = 'والد / والدة'; labelFr = 'Parent'; }
-                      if (val === 'self') { labelAr = 'أنا'; labelFr = 'Moi'; }
-                      setFormData({ ...formData, relationship: val, relationshipLabelAr: labelAr, relationshipLabelFr: labelFr });
+                      let labelEn = 'Child';
+                      if (val === 'spouse') { labelAr = 'زوج / زوجة'; labelFr = 'Conjoint(e)'; labelEn = 'Spouse'; }
+                      if (val === 'parent') { labelAr = 'والد / والدة'; labelFr = 'Parent'; labelEn = 'Parent'; }
+                      if (val === 'self') { labelAr = 'أنا'; labelFr = 'Moi'; labelEn = 'Self'; }
+                      if (val === 'other') { labelAr = 'قريب آخر'; labelFr = 'Autre proche'; labelEn = 'Other relative'; }
+                      setFormData({ ...formData, relationship: val, relationshipLabelAr: labelAr, relationshipLabelFr: labelFr, relationshipLabelEn: labelEn });
                     }}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   >
-                    <option value="child">{isAr ? 'ابن / ابنة' : 'Enfant'}</option>
-                    <option value="spouse">{isAr ? 'زوج / زوجة' : 'Conjoint(e)'}</option>
-                    <option value="parent">{isAr ? 'أب / أم' : 'Père / Mère'}</option>
-                    <option value="other">{isAr ? 'قريب آخر / تحت الرعاية' : 'Autre proche'}</option>
+                    <option value="child">{tr(language, 'ابن / ابنة', 'Enfant', 'Child')}</option>
+                    <option value="spouse">{tr(language, 'زوج / زوجة', 'Conjoint(e)', 'Spouse')}</option>
+                    <option value="parent">{tr(language, 'أب / أم', 'Père / Mère', 'Parent')}</option>
+                    <option value="other">{tr(language, 'قريب آخر / تحت الرعاية', 'Autre proche', 'Other relative / Dependent')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'تاريخ الميلاد' : 'Date de naissance'}
+                    {tr(language, 'تاريخ الميلاد', 'Date de naissance', 'Date of Birth')}
                   </label>
                   <input
                     type="date"
@@ -410,7 +432,7 @@ export const FamilyView: React.FC = () => {
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'فصيلة الدم' : 'Groupe sanguin'}
+                    {tr(language, 'فصيلة الدم', 'Groupe sanguin', 'Blood Type')}
                   </label>
                   <select
                     value={formData.bloodGroup}
@@ -427,25 +449,25 @@ export const FamilyView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'رقم بطاقة الشفاء (اختياري)' : 'N° Carte Chifa'}
+                    {tr(language, 'رقم بطاقة الشفاء (اختياري)', 'N° Carte Chifa', 'Chifa Card No. (optional)')}
                   </label>
                   <input
                     type="text"
                     value={formData.nationalIdOrChifa}
                     onChange={(e) => setFormData({ ...formData, nationalIdOrChifa: e.target.value })}
-                    placeholder="18 أرقام"
+                    placeholder={tr(language, '18 أرقام', '18 chiffres', '18 digits')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500 font-mono"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {isAr ? 'الوصي القانوني / المسؤول' : 'Tuteur / Responsable'}
+                    {tr(language, 'الوصي القانوني / المسؤول', 'Tuteur / Responsable', 'Legal Guardian')}
                   </label>
                   <input
                     type="text"
                     value={formData.legalGuardian}
                     onChange={(e) => setFormData({ ...formData, legalGuardian: e.target.value })}
-                    placeholder="مثال: الوالدان، أو الحضانة القانونية"
+                    placeholder={tr(language, 'مثال: الوالدان، أو الحضانة القانونية', 'Ex : Parents ou tuteur légal', 'e.g. Parents or legal guardian')}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                   />
                 </div>
@@ -453,26 +475,26 @@ export const FamilyView: React.FC = () => {
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'الحساسية المعروفة (مفصولة بفواصل)' : 'Allergies connues (séparées par virgules)'}
+                  {tr(language, 'الحساسية المعروفة (مفصولة بفواصل)', 'Allergies connues (séparées par virgules)', 'Known Allergies (comma-separated)')}
                 </label>
                 <input
                   type="text"
                   value={formData.allergies}
                   onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
-                  placeholder="مثال: البنسلين، الفول السوداني..."
+                  placeholder={tr(language, 'مثال: البنسلين، الفول السوداني...', 'Ex : Pénicilline, arachides...', 'e.g. Penicillin, peanuts...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  {isAr ? 'الأمراض المزمنة (مفصولة بفواصل)' : 'Maladies chroniques'}
+                  {tr(language, 'الأمراض المزمنة (مفصولة بفواصل)', 'Maladies chroniques', 'Chronic Conditions (comma-separated)')}
                 </label>
                 <input
                   type="text"
                   value={formData.chronicDiseases}
                   onChange={(e) => setFormData({ ...formData, chronicDiseases: e.target.value })}
-                  placeholder="مثال: الربو، السكري، ضغط الدم..."
+                  placeholder={tr(language, 'مثال: الربو، السكري، ضغط الدم...', 'Ex : Asthme, diabète, HTA...', 'e.g. Asthma, diabetes, hypertension...')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-teal-500"
                 />
               </div>
@@ -483,13 +505,13 @@ export const FamilyView: React.FC = () => {
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
                 >
-                  {isAr ? 'إلغاء' : 'Annuler'}
+                  {tr(language, 'إلغاء', 'Annuler', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white font-bold shadow-md cursor-pointer"
                 >
-                  {isAr ? 'حفظ وإنشاء الملف الصحي' : 'Créer le dossier'}
+                  {tr(language, 'حفظ وإنشاء الملف الصحي', 'Créer le dossier', 'Create Health Record')}
                 </button>
               </div>
 
